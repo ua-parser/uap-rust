@@ -1,0 +1,3 @@
+[workspace]
+members = ["regex-filtered", "ua-parser"]
+resolver = "2"
