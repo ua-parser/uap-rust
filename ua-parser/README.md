@@ -138,4 +138,24 @@ assert_eq!(
 # Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
+## Performances
+
+The package has not been profiled or optimised yet, but it seems
+rather competitive with uap-cpp:
+
+```sh
+> ./UaParserBench ../uap-core/regexes.yaml benchmarks/useragents.txt 1000
+   27.91s user 0.16s system 99% cpu 28.149 total
+> ./UaParserBench ../uap-core/regexes.yaml ../uap-python/samples/useragents.txt 100
+  248.17s user 0.88s system 99% cpu 4:09.52 total
+```
+
+```sh
+> target/release/examples/bench -r 1000 ../uap-core/regexes.yaml ../uap-cpp/benchmarks/useragents.txt
+   13.42s user 0.31s system 99% cpu 13.799 total
+
+> target/release/examples/bench -r 100 ../uap-core/regexes.yaml ../uap-python/samples/useragents.txt
+  129.34s user 0.05s system 99% cpu 2:09.64 total
+```
+
 [`regexes.yaml`]: https://github.com/ua-parser/uap-core/blob/master/regexes.yaml
