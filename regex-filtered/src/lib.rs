@@ -287,7 +287,6 @@ impl Regexes {
 
     /// Returns *whether* any regex in the set matches the haystack.
     pub fn is_match(&self, haystack: &str) -> bool {
-        eprintln!("{}", self.prefiltered(haystack).count());
         self.prefiltered(haystack)
             .any(|idx| self.regexes[idx].is_match(haystack))
     }
