@@ -1,4 +1,3 @@
-use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
 use std::fmt::Formatter;
 
@@ -192,7 +191,7 @@ impl Display for Mapper {
         writeln!(f, "#Unique Atoms: {}", self.atom_to_entry.len())?;
         for (i, e) in self.atom_to_entry.iter().copied().enumerate() {
             writeln!(f, "\tatom {i} -> entry {e}")?;
-            for r in self.propagate_match([e].into()) {
+            for r in self.propagate_match(&mut FromIterator::from_iter([e])) {
                 writeln!(f, "\t\tregex {r}")?;
             }
         }
@@ -236,6 +235,8 @@ struct Entry {
     /// regexps that are triggered.
     regexps: Vec<usize>,
 }
+
+type Set = IndexSet<usize, nohash::BuildNoHashHasher<usize>>;
 pub struct Mapper {
     /// Number of regexes covered by the mapper
     regexp_count: usize,
@@ -250,26 +251,28 @@ pub struct Mapper {
 }
 impl Mapper {
     // name is shit and also needs to see if we can generate stuff on the fly
-    pub fn atom_to_re(&self, atoms: impl IntoIterator<Item = usize>) -> Vec<usize> {
-        let matched_atom_ids = atoms
-            .into_iter()
-            .map(|idx| self.atom_to_entry[idx])
-            .collect();
-        let regexps_map = self.propagate_match(matched_atom_ids);
+    pub fn atom_to_re(&self, atoms: impl IntoIterator<Item = usize>) -> Set {
+        let mut matched_atom_ids = IndexSet::with_capacity_and_hasher(
+            self.entries.len(),
+            nohash::BuildNoHashHasher::default(),
+        );
+        matched_atom_ids.extend(atoms.into_iter().map(|idx| self.atom_to_entry[idx]));
 
-        let mut regexps = Vec::with_capacity(regexps_map.len() + self.unfiltered.len());
+        let mut regexps = self.propagate_match(&mut matched_atom_ids);
+
         regexps.extend(&self.unfiltered);
-        regexps.extend(regexps_map);
 
         regexps.sort_unstable();
         regexps
     }
 
-    fn propagate_match(&self, mut work: IndexSet<usize>) -> HashSet<usize> {
-        work.reserve(self.entries.len() - work.len());
-        let mut count = HashMap::with_capacity(self.entries.len());
+    fn propagate_match(&self, work: &mut Set) -> Set {
+        let mut count = vec![0;self.entries.len()];
 
-        let mut regexps = HashSet::with_capacity(self.regexp_count);
+        let mut regexps = IndexSet::with_capacity_and_hasher(
+            self.regexp_count,
+            nohash::BuildNoHashHasher::default(),
+        );
 
         let mut i = 0;
         while i < work.len() {
@@ -284,7 +287,8 @@ impl Mapper {
                 let parent = &self.entries[j];
                 // Delay until all the children have succeeded.
                 if parent.propagate_up_at_count > 1 {
-                    let c = count.entry(j).and_modify(|e| *e += 1).or_insert(1);
+                    let c = &mut count[j];
+                    *c += 1;
                     if *c < parent.propagate_up_at_count {
                         continue;
                     }
@@ -337,8 +341,8 @@ mod test {
 
         assert_eq!(m.entries.len(), 3);
         assert_eq!(&m.atom_to_entry, &[0, 1]);
-        assert_eq!(m.propagate_match([0].into()), [0].into(),);
-        assert_eq!(m.propagate_match([1].into()), [0].into(),);
+        assert_eq!(m.propagate_match(&mut FromIterator::from_iter([0])), [0].into(),);
+        assert_eq!(m.propagate_match(&mut FromIterator::from_iter([1])), [0].into(),);
     }
 
     fn check_patterns(patterns: &'static [&'static str], expected: &'static [&'static str]) {
