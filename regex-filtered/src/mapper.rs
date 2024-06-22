@@ -43,8 +43,6 @@ impl Builder {
 
     pub fn build(self) -> (Mapper, Vec<String>) {
         // inlined `assign_unique_ids` because it doesn't seem super useful... to us
-        #[allow(clippy::mutable_key_type)]
-        let mut nodes = NodeSet::new();
         let mut atoms = Vec::new();
         let mut atom_index_to_id = Vec::new();
         // Build vector of all filter nodes, sorted topologically,
@@ -62,6 +60,8 @@ impl Builder {
                 v.extend(s.iter());
             }
         }
+        #[allow(clippy::mutable_key_type)]
+        let mut nodes = NodeSet::with_capacity(v.len());
 
         let mut unique_id = 0..;
         // identify unique nodes
@@ -79,21 +79,16 @@ impl Builder {
             }
         }
 
-        // maybe this could just be a prealloc and we append since id
-        // should be a sequence?
         let mut entries = vec![Entry::default(); unique_id.next().expect("infinite(ish) sequence")];
         // Fill the entries
-        for model in v.iter().rev() {
-            if nodes.get(model) != Some(model) {
-                continue;
-            }
-            let id = model.unique_id();
-            match &model {
+        for model in &nodes {
+            match model {
                 Model::None(_) => unreachable!("no idea why this is an error"),
                 // We replace excluded models by All rather than null,
                 // so those are not unreachable.
                 Model::All(_) => (),
                 Model::Atom(_, _) => {
+                    let id = model.unique_id();
                     entries[id].propagate_up_at_count = 1;
                 }
                 // For each child, we append our id to the child's
@@ -102,6 +97,7 @@ impl Builder {
                 // unique children, which allows correct upward
                 // propagation from AND nodes.
                 Model::And(_, s) | Model::Or(_, s) => {
+                    let id = model.unique_id();
                     let mut up_count = 0;
                     for child_id in s.iter().map(|c| c.unique_id()) {
                         let parents = &mut entries[child_id].parents;
@@ -133,17 +129,13 @@ impl Builder {
         let log_num_regexps = ((self.models.len() - self.unfiltered.len()) as f64).ln();
         // Hoisted this above the loop so that we don't thrash the heap. (???)
         let mut entries_by_num_edges = Vec::<(usize, usize)>::new();
-        for model in v.iter().rev() {
+        for model in &nodes {
             let Model::And(_, s) = &model else {
                 continue;
             };
-            if nodes.get(model) != Some(model) {
-                continue;
-            }
-            let id = model.unique_id();
 
             // Sort the current node's children by the numbers of parents.
-            for child_id in s.iter().map(|c| c.unique_id()) {
+            for child_id in s.iter().map(Model::unique_id) {
                 entries_by_num_edges.push((entries[child_id].parents.len(), child_id));
             }
             entries_by_num_edges.sort_unstable();
@@ -160,6 +152,7 @@ impl Builder {
                     log_num_triggered += (parents.len() as f64).ln();
                     log_num_triggered -= log_num_regexps;
                 } else if parents.len() > 9 {
+                    let id = model.unique_id();
                     if let Some(idx) = parents.iter().position(|&p| p == id) {
                         parents.swap_remove(idx);
                         // re2 uses an `int`, which can go negative,
