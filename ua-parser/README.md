@@ -141,21 +141,21 @@ assert_eq!(
 ## Performances
 
 The package has not been profiled or optimised yet, but it seems
-rather competitive with uap-cpp:
+rather competitive with uap-cpp (tested on an M1 Pro MBP):
 
 ```sh
-> ./UaParserBench ../uap-core/regexes.yaml benchmarks/useragents.txt 1000
-   27.91s user 0.16s system 99% cpu 28.149 total
+> ./UaParserBench ../uap-core/regexes.yaml benchmarks/useragents.txt 10
+   25.13s user 0.07s system 99% cpu 25.279 total
 > ./UaParserBench ../uap-core/regexes.yaml ../uap-python/samples/useragents.txt 100
-  248.17s user 0.88s system 99% cpu 4:09.52 total
+  246.49s user 0.47s system 99% cpu 4:07.55 total
 ```
 
 ```sh
-> target/release/examples/bench -r 1000 ../uap-core/regexes.yaml ../uap-cpp/benchmarks/useragents.txt
-   13.42s user 0.31s system 99% cpu 13.799 total
+> target/release/examples/bench -r 10 ../uap-core/regexes.yaml ../uap-cpp/benchmarks/useragents.txt
+   10.10s user 0.04s system 99% cpu 10.169 total
 
 > target/release/examples/bench -r 100 ../uap-core/regexes.yaml ../uap-python/samples/useragents.txt
-  129.34s user 0.05s system 99% cpu 2:09.64 total
+   98.46s user 0.04s system 99% cpu 1:38.73 total
 ```
 
 [`regexes.yaml`]: https://github.com/ua-parser/uap-core/blob/master/regexes.yaml
