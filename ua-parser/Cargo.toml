@@ -1,6 +1,6 @@
 [package]
 name = "ua-parser"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 license = "Apache-2.0"
 description = "Rust implementation of the User Agent String Parser project"
@@ -14,7 +14,7 @@ repository = "https://github.com/ua-parser/uap-rust/"
 
 [dependencies]
 regex = "1.10.4"
-regex-filtered = { version = "0.1.0", path = "../regex-filtered" }
+regex-filtered = { version = "0.2.0", path = "../regex-filtered" }
 serde = { version = "1.0.203", features = ["derive"] }
 
 [dev-dependencies]
