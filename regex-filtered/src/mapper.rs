@@ -1,8 +1,7 @@
 use std::fmt::Display;
 use std::fmt::Formatter;
 
-use indexmap::IndexSet;
-
+use crate::int_set::IntSet;
 use super::model::Model;
 
 pub struct Builder {
@@ -184,7 +183,9 @@ impl Display for Mapper {
         writeln!(f, "#Unique Atoms: {}", self.atom_to_entry.len())?;
         for (i, e) in self.atom_to_entry.iter().copied().enumerate() {
             writeln!(f, "\tatom {i} -> entry {e}")?;
-            for r in self.propagate_match(&mut FromIterator::from_iter([e])) {
+            let mut s = IntSet::new(self.entries.len());
+            s.insert(e);
+            for r in self.propagate_match(&mut s).into_vec() {
                 writeln!(f, "\t\tregex {r}")?;
             }
         }
@@ -229,7 +230,6 @@ struct Entry {
     regexps: Vec<usize>,
 }
 
-type Set = IndexSet<usize, nohash::BuildNoHashHasher<usize>>;
 pub struct Mapper {
     /// Number of regexes covered by the mapper
     regexp_count: usize,
@@ -244,14 +244,11 @@ pub struct Mapper {
 }
 impl Mapper {
     // name is shit and also needs to see if we can generate stuff on the fly
-    pub fn atom_to_re(&self, atoms: impl IntoIterator<Item = usize>) -> Set {
-        let mut matched_atom_ids = IndexSet::with_capacity_and_hasher(
-            self.entries.len(),
-            nohash::BuildNoHashHasher::default(),
-        );
+    pub fn atom_to_re(&self, atoms: impl IntoIterator<Item = usize>) -> Vec<usize> {
+        let mut matched_atom_ids = IntSet::new(self.entries.len());
         matched_atom_ids.extend(atoms.into_iter().map(|idx| self.atom_to_entry[idx]));
 
-        let mut regexps = self.propagate_match(&mut matched_atom_ids);
+        let mut regexps = self.propagate_match(&mut matched_atom_ids).into_vec();
 
         regexps.extend(&self.unfiltered);
 
@@ -259,13 +256,10 @@ impl Mapper {
         regexps
     }
 
-    fn propagate_match(&self, work: &mut Set) -> Set {
+    fn propagate_match(&self, work: &mut IntSet) -> IntSet {
         let mut count = vec![0;self.entries.len()];
 
-        let mut regexps = IndexSet::with_capacity_and_hasher(
-            self.regexp_count,
-            nohash::BuildNoHashHasher::default(),
-        );
+        let mut regexps = IntSet::new(self.regexp_count);
 
         let mut i = 0;
         while i < work.len() {
@@ -334,8 +328,12 @@ mod test {
 
         assert_eq!(m.entries.len(), 3);
         assert_eq!(&m.atom_to_entry, &[0, 1]);
-        assert_eq!(m.propagate_match(&mut FromIterator::from_iter([0])), [0].into(),);
-        assert_eq!(m.propagate_match(&mut FromIterator::from_iter([1])), [0].into(),);
+        let mut s = IntSet::new(3);
+        s.insert(0);
+        assert_eq!(m.propagate_match(&mut s).into_vec(), vec![0]);
+        let mut s = IntSet::new(3);
+        s.insert(1);
+        assert_eq!(m.propagate_match(&mut s).into_vec(), vec![0]);
     }
 
     fn check_patterns(patterns: &'static [&'static str], expected: &'static [&'static str]) {

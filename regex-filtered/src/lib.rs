@@ -6,6 +6,7 @@ use aho_corasick::AhoCorasick;
 
 mod mapper;
 mod model;
+mod int_set;
 pub use model::Error as ModelError;
 
 /// Builder for the regexes set
