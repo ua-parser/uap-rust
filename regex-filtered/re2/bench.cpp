@@ -1,5 +1,7 @@
+#include <cassert>
 #include <chrono>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <re2/filtered_re2.h>
 #include <re2/re2.h>

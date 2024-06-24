@@ -4,7 +4,7 @@ LDFLAGS += -lre2
 .PHONY: clean
 
 bench: bench.cpp
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
 
 clean:
 	@rm bench
