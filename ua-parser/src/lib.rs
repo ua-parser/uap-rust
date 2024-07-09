@@ -192,7 +192,7 @@ pub mod user_agent {
         /// Pushes a parser into the builder, may fail if the
         /// [`Parser::regex`] is invalid.
         pub fn push(mut self, ua: Parser<'a>) -> Result<Self, super::Error> {
-            self.builder = self.builder.push(&ua.regex)?;
+            self.builder = self.builder.push(&super::rewrite_regex(&ua.regex))?;
             let r = &self.builder.regexes()[self.builder.regexes().len() - 1];
             // number of groups in regex, excluding implicit entire match group
             let groups = r.captures_len() - 1;
@@ -357,7 +357,7 @@ pub mod os {
         /// be parsed, or if [`Parser::os_replacement`] is missing and
         /// the regex has no groups.
         pub fn push(mut self, os: Parser<'a>) -> Result<Self, ParseError> {
-            self.builder = self.builder.push(&os.regex)?;
+            self.builder = self.builder.push(&super::rewrite_regex(&os.regex))?;
             let r = &self.builder.regexes()[self.builder.regexes().len() - 1];
             // number of groups in regex, excluding implicit entire match group
             let groups = r.captures_len() - 1;
@@ -523,7 +523,7 @@ pub mod device {
         /// which [`Parser::regex`] is missing.
         pub fn push(mut self, device: Parser<'a>) -> Result<Self, ParseError> {
             self.builder = self.builder.push_opt(
-                &device.regex,
+                &super::rewrite_regex(&device.regex),
                 regex_filtered::Options::new()
                     .case_insensitive(device.regex_flag == Some(Flag::IgnoreCase)),
             )?;
@@ -605,5 +605,137 @@ pub mod device {
         pub brand: Option<String>,
         ///
         pub model: Option<String>,
+    }
+}
+
+/// Rewrites a regex's character classes to ascii and bounded
+/// repetitions to unbounded, the second to reduce regex memory
+/// requirements, and the first for both that and to better match the
+/// (inferred) semantics intended for ua-parser.
+fn rewrite_regex(re: &str) -> std::borrow::Cow<'_, str> {
+    let mut from = 0;
+    let mut out = String::new();
+
+    let mut it = re.char_indices();
+    let mut escape = false;
+    let mut inclass = 0;
+    'main: while let Some((idx, c)) = it.next() {
+        match c {
+            '\\' if !escape => {
+                escape = true;
+                continue
+            }
+            '{' if !escape && inclass == 0 => {
+                if idx == 0 {
+                    // we're repeating nothing, this regex is broken, bail
+                    return re.into()
+                }
+                // we don't need to loop, we only want to replace {0, ...} and {1, ...}
+                let Some((_, start)) = it.next() else {
+                    continue;
+                };
+                if start != '0' && start != '1' {
+                    continue;
+                }
+
+                if !matches!(it.next(), Some((_, ','))) {
+                    continue;
+                }
+
+                let mut digits = 0;
+                for (ri, rc) in it.by_ref() {
+                    match rc {
+                        '}' if digits > 2 => {
+                            // here idx is the index of the start of
+                            // the range and ri is the end of range
+                            out.push_str(&re[from..idx]);
+                            from = ri+1;
+                            out.push_str(if start == '0' { "*" } else { "+" });
+                            break;
+                        }
+                        c if c.is_ascii_digit() => {
+                            digits += 1;
+                        }
+                        _ => {
+                            continue 'main
+                        }
+                    }
+                }
+            }
+            '[' if !escape => { inclass += 1; }
+            ']' if !escape => { inclass += 1; }
+            // no need for special cases because regex allows nesting
+            // character classes, whereas js or python don't \o/
+            'd' if escape => {
+                // idx is d so idx-1 is \\, and we want to exclude it
+                out.push_str(&re[from..idx-1]);
+                from = idx+1;
+                out.push_str("[0-9]");
+            }
+            'D' if escape => {
+                out.push_str(&re[from..idx-1]);
+                from = idx+1;
+                out.push_str("[^0-9]");
+            }
+            'w' if escape => {
+                out.push_str(&re[from..idx-1]);
+                from = idx+1;
+                out.push_str("[A-Za-z0-9_]");
+            }
+            'W' if escape => {
+                out.push_str(&re[from..idx-1]);
+                from = idx+1;
+                out.push_str("[^A-Za-z0-9_]");
+            }
+            _ => ()
+        }
+        escape = false;
+    }
+
+    if from == 0 {
+        re.into()
+    } else {
+        out.push_str(&re[from..]);
+        out.into()
+    }
+}
+
+#[cfg(test)]
+mod test_rewrite_regex {
+    use super::rewrite_regex as rewrite;
+
+    #[test]
+    fn ignore_small_repetition() {
+        assert_eq!(rewrite(".{0,2}x"), ".{0,2}x");
+        assert_eq!(rewrite(".{0,}"), ".{0,}");
+        assert_eq!(rewrite(".{1,}"), ".{1,}");
+    }
+
+    #[test]
+    fn rewrite_large_repetitions() {
+        assert_eq!(rewrite(".{0,20}x"), ".{0,20}x");
+        assert_eq!(rewrite("(.{0,100})"), "(.*)");
+        assert_eq!(rewrite("(.{1,50})"), "(.{1,50})");
+        assert_eq!(rewrite(".{1,300}x"), ".+x");
+    }
+
+    #[test]
+    fn ignore_non_repetitions() {
+        assert_eq!(
+            rewrite(r"\{1,2}"),
+            r"\{1,2}",
+            "if the opening brace is escaped it's not a repetition");
+        assert_eq!(
+            rewrite("[.{1,100}]"),
+            "[.{1,100}]",
+            "inside a set it's not a repetition"
+        );
+    }
+
+    #[test]
+    fn rewrite_classes() {
+        assert_eq!(rewrite(r"\dx"), "[0-9]x");
+        assert_eq!(rewrite(r"\wx"), "[A-Za-z0-9_]x");
+        assert_eq!(rewrite(r"[\d]x"), r"[[0-9]]x");
     }
 }
