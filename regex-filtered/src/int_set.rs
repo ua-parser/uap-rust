@@ -6,7 +6,7 @@ pub struct IntSet {
 impl IntSet {
     pub fn new(capacity: usize) -> Self {
         Self {
-            sparse: vec![usize::MAX;capacity],
+            sparse: vec![usize::MAX; capacity],
             dense: Vec::with_capacity(capacity),
         }
     }
@@ -47,7 +47,7 @@ impl std::iter::Extend<usize> for IntSet {
     }
 }
 
-impl <'a> std::iter::Extend<&'a usize> for IntSet {
+impl<'a> std::iter::Extend<&'a usize> for IntSet {
     fn extend<T: IntoIterator<Item = &'a usize>>(&mut self, iter: T) {
         for val in iter {
             self.insert(*val);

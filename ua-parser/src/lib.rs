@@ -623,12 +623,12 @@ fn rewrite_regex(re: &str) -> std::borrow::Cow<'_, str> {
         match c {
             '\\' if !escape => {
                 escape = true;
-                continue
+                continue;
             }
             '{' if !escape && inclass == 0 => {
                 if idx == 0 {
                     // we're repeating nothing, this regex is broken, bail
-                    return re.into()
+                    return re.into();
                 }
                 // we don't need to loop, we only want to replace {0, ...} and {1, ...}
                 let Some((_, start)) = it.next() else {
@@ -649,45 +649,47 @@ fn rewrite_regex(re: &str) -> std::borrow::Cow<'_, str> {
                             // here idx is the index of the start of
                             // the range and ri is the end of range
                             out.push_str(&re[from..idx]);
-                            from = ri+1;
+                            from = ri + 1;
                             out.push_str(if start == '0' { "*" } else { "+" });
                             break;
                         }
                         c if c.is_ascii_digit() => {
                             digits += 1;
                         }
-                        _ => {
-                            continue 'main
-                        }
+                        _ => continue 'main,
                     }
                 }
             }
-            '[' if !escape => { inclass += 1; }
-            ']' if !escape => { inclass += 1; }
+            '[' if !escape => {
+                inclass += 1;
+            }
+            ']' if !escape => {
+                inclass += 1;
+            }
             // no need for special cases because regex allows nesting
             // character classes, whereas js or python don't \o/
             'd' if escape => {
                 // idx is d so idx-1 is \\, and we want to exclude it
-                out.push_str(&re[from..idx-1]);
-                from = idx+1;
+                out.push_str(&re[from..idx - 1]);
+                from = idx + 1;
                 out.push_str("[0-9]");
             }
             'D' if escape => {
-                out.push_str(&re[from..idx-1]);
-                from = idx+1;
+                out.push_str(&re[from..idx - 1]);
+                from = idx + 1;
                 out.push_str("[^0-9]");
             }
             'w' if escape => {
-                out.push_str(&re[from..idx-1]);
-                from = idx+1;
+                out.push_str(&re[from..idx - 1]);
+                from = idx + 1;
                 out.push_str("[A-Za-z0-9_]");
             }
             'W' if escape => {
-                out.push_str(&re[from..idx-1]);
-                from = idx+1;
+                out.push_str(&re[from..idx - 1]);
+                from = idx + 1;
                 out.push_str("[^A-Za-z0-9_]");
             }
-            _ => ()
+            _ => (),
         }
         escape = false;
     }
@@ -724,7 +726,8 @@ mod test_rewrite_regex {
         assert_eq!(
             rewrite(r"\{1,2}"),
             r"\{1,2}",
-            "if the opening brace is escaped it's not a repetition");
+            "if the opening brace is escaped it's not a repetition"
+        );
         assert_eq!(
             rewrite("[.{1,100}]"),
             "[.{1,100}]",

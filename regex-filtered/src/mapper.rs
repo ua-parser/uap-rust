@@ -1,8 +1,8 @@
 use std::fmt::Display;
 use std::fmt::Formatter;
 
-use crate::int_set::IntSet;
 use super::model::Model;
+use crate::int_set::IntSet;
 
 pub struct Builder {
     min_atom_len: usize,
@@ -257,7 +257,7 @@ impl Mapper {
     }
 
     fn propagate_match(&self, work: &mut IntSet) -> IntSet {
-        let mut count = vec![0;self.entries.len()];
+        let mut count = vec![0; self.entries.len()];
 
         let mut regexps = IntSet::new(self.regexp_count);
 
