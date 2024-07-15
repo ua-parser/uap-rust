@@ -4,3 +4,5 @@ Cargo.lock
 *.dSYM/
 regex-filtered/re2/flake.lock
 regex-filtered/re2/bench
+.tox/
+__pycache__
