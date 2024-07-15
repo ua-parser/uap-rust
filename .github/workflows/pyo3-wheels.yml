@@ -1,0 +1,193 @@
+name: Wheels and Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  wheels:
+    strategy:
+      matrix:
+        python-version:
+          - "3.x"
+          - "pypy-3.10"
+          - "graalpy-24"
+        arch:
+          - x86_64
+          - aarch64
+        platform:
+          - linux
+          - musllinux
+          - windows
+          - macos
+
+        exclude:
+          - platform: windows
+            arch: aarch64
+          - platform: windows
+            python-version: graalpy-24
+
+        include:
+          - platform: linux
+            manylinux: auto
+          - platform: musllinux
+            manylinux: musllinux_1_2
+
+          - args: --release --out dist -m ua-parser-py/Cargo.toml -i python
+          - platform: linux
+            args: --release --out dist -m ua-parser-py/Cargo.toml -i python --zig
+          - platform: musllinux
+            args: --release --out dist -m ua-parser-py/Cargo.toml
+
+          - runs: ubuntu-latest
+          - platform: windows
+            runs: windows-latest
+          - platform: macos
+            runs: macos-latest
+
+    runs-on: ${{ matrix.runs }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.arch }}
+          args: ${{ matrix.args }}
+          sccache: 'true'
+          manylinux: ${{ matrix.manylinux }}
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.python-version }}
+          path: dist/*
+
+  sdist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build sdist
+        uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          args: --out dist -m ua-parser-py/Cargo.toml
+      - name: Upload sdist
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-sdist
+          path: dist
+
+  # TODO: tags don't work because multiple crates in same repo, so
+  # needs some other method of picking versions
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    needs: [wheels, sdist]
+    permissions:
+      # Use to sign the release artifacts
+      id-token: write
+      # Used to upload release artifacts
+      contents: write
+      # Used to generate artifact attestation
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@v4
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: 'wheels-*/*'
+      - name: Publish to PyPI
+        uses: PyO3/maturin-action@v1
+        env:
+          MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        with:
+          command: upload
+          args: --non-interactive --skip-existing wheels-*/*
+
+  tests:
+    needs: wheels
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.9"
+          - "3.10"
+          - "3.11"
+          - "3.12"
+          - "3.13"
+          - "pypy-3.10"
+          - "graalpy-24"
+        platform:
+          - linux
+          # probably requires a custom image of some sort
+          # - musllinux
+          - windows
+          - macos
+
+        exclude:
+          - platform: windows
+            python-version: graalpy-24
+
+        include:
+          # would probably need to run qemu inside the thing to full
+          # test the archs...
+          - arch: x86_64
+          - platform: macos
+            arch: aarch64
+
+          - wheel: "3.x"
+          - python-version: "pypy-3.10"
+            wheel: "pypy-3.10"
+          - python-version: "graalpy-24"
+            wheel: "graalpy-24"
+
+          - runs: ubuntu-latest
+          - platform: windows
+            runs: windows-latest
+          - platform: macos
+            runs: macos-latest
+
+    runs-on: ${{ matrix.runs }}
+
+    steps:
+      - name: Checkout working copy
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          allow-prereleases: true
+      - name: Retrieve wheel
+        uses: actions/download-artifact@v4
+        with:
+          name: wheels-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.wheel }}
+          path: dist
+      - name: Update pip
+        run: python -mpip install --upgrade pip
+      - name: Maybe install libyaml-dev
+        if: matrix.runs == 'ubuntu-latest'
+        run: |
+          # if binary wheels are not available for the current
+          # package install libyaml-dev so we can install pyyaml
+          # from source
+          if ! pip download --only-binary :all: pyyaml > /dev/null 2>&1; then
+              sudo apt install libyaml-dev
+          fi
+      - name: Install test dependencies
+        run: python -mpip install pytest pyyaml
+      - name: Install wheel
+        run: pip install --find-links dist ua_parser_rs
+      - name: Run tests
+        run: pytest -v -Werror -ra ua-parser-py

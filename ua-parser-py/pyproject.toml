@@ -1,0 +1,18 @@
+[build-system]
+requires = ["maturin>=1.5,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "ua-parser-rs"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    # "Programming Language :: Python :: Implementation :: GraalPy",
+    "License :: OSI Approved :: Apache Software License",
+]
+dynamic = ["version"]
+[tool.maturin]
+features = ["pyo3/extension-module"]
