@@ -11,7 +11,7 @@ pub use model::Error as ModelError;
 
 /// Builder for the regexes set
 pub struct Builder {
-    regexes: Vec<regex::Regex>,
+    regexes: Vec<regex_lite::Regex>,
     mapper_builder: mapper::Builder,
 }
 
@@ -69,8 +69,8 @@ impl Options {
         self.crlf = yes;
         self
     }
-    fn to_regex(&self, pattern: &str) -> Result<regex::Regex, regex::Error> {
-        regex::RegexBuilder::new(pattern)
+    fn to_regex(&self, pattern: &str) -> Result<regex_lite::Regex, regex_lite::Error> {
+        regex_lite::RegexBuilder::new(pattern)
             .case_insensitive(self.case_insensitive)
             .dot_matches_new_line(self.dot_matches_new_line)
             .ignore_whitespace(self.ignore_whitespace)
@@ -113,16 +113,12 @@ pub enum ParseError {
     /// An error occurred while processing the regex for atom
     /// extraction.
     ProcessingError(ModelError),
-    /// The regex was too large to compile to the NFA (within the
-    /// default limits).
-    RegexTooLarge(usize),
 }
 impl std::error::Error for ParseError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             ParseError::ProcessingError(e) => Some(e),
             ParseError::SyntaxError(_) => None,
-            ParseError::RegexTooLarge(_) => None,
         }
     }
 }
@@ -136,12 +132,9 @@ impl From<regex_syntax::Error> for ParseError {
         Self::SyntaxError(value.to_string())
     }
 }
-impl From<regex::Error> for ParseError {
-    fn from(value: regex::Error) -> Self {
-        match value {
-            regex::Error::CompiledTooBig(v) => Self::RegexTooLarge(v),
-            e => Self::SyntaxError(e.to_string()),
-        }
+impl From<regex_lite::Error> for ParseError {
+    fn from(value: regex_lite::Error) -> Self {
+        Self::SyntaxError(value.to_string())
     }
 }
 impl From<ModelError> for ParseError {
@@ -196,7 +189,7 @@ impl Builder {
     }
 
     /// Currently loaded regexes.
-    pub fn regexes(&self) -> &[regex::Regex] {
+    pub fn regexes(&self) -> &[regex_lite::Regex] {
         &self.regexes
     }
 
@@ -262,7 +255,7 @@ impl Default for Builder {
 /// Regexes set, allows testing inputs against a *large* number of
 /// *non-trivial* regexes.
 pub struct Regexes {
-    regexes: Vec<regex::Regex>,
+    regexes: Vec<regex_lite::Regex>,
     mapper: mapper::Mapper,
     prefilter: AhoCorasick,
 }
@@ -299,7 +292,7 @@ impl Regexes {
     pub fn matching<'a>(
         &'a self,
         haystack: &'a str,
-    ) -> impl Iterator<Item = (usize, &regex::Regex)> + 'a {
+    ) -> impl Iterator<Item = (usize, &regex_lite::Regex)> + 'a {
         self.prefiltered(haystack).filter_map(move |idx| {
             let r = &self.regexes[idx];
             r.is_match(haystack).then_some((idx, r))
@@ -307,7 +300,7 @@ impl Regexes {
     }
 
     /// Returns a reference to all the regexes in the set.
-    pub fn regexes(&self) -> &[regex::Regex] {
+    pub fn regexes(&self) -> &[regex_lite::Regex] {
         &self.regexes
     }
 }

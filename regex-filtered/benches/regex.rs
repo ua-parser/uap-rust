@@ -1,6 +1,6 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 
-use regex::Regex;
+use regex_lite::Regex;
 
 /// On this trivial syntetic test, the results on an M1P are:
 ///

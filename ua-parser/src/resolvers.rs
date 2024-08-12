@@ -5,7 +5,7 @@
 // required, if any group is optional that returns `None`.
 
 use crate::Error;
-use regex::Captures;
+use regex_lite::Captures;
 use std::borrow::Cow;
 
 fn get<'s>(c: &Captures<'s>, group: usize) -> Option<&'s str> {

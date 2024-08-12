@@ -3,7 +3,7 @@
 #![allow(clippy::empty_docs)]
 #![doc = include_str!("../README.md")]
 
-use regex::Captures;
+use regex_lite::Captures;
 use serde::Deserialize;
 
 pub use regex_filtered::{BuildError, ParseError};
@@ -666,29 +666,6 @@ fn rewrite_regex(re: &str) -> std::borrow::Cow<'_, str> {
             ']' if !escape => {
                 inclass += 1;
             }
-            // no need for special cases because regex allows nesting
-            // character classes, whereas js or python don't \o/
-            'd' if escape => {
-                // idx is d so idx-1 is \\, and we want to exclude it
-                out.push_str(&re[from..idx - 1]);
-                from = idx + 1;
-                out.push_str("[0-9]");
-            }
-            'D' if escape => {
-                out.push_str(&re[from..idx - 1]);
-                from = idx + 1;
-                out.push_str("[^0-9]");
-            }
-            'w' if escape => {
-                out.push_str(&re[from..idx - 1]);
-                from = idx + 1;
-                out.push_str("[A-Za-z0-9_]");
-            }
-            'W' if escape => {
-                out.push_str(&re[from..idx - 1]);
-                from = idx + 1;
-                out.push_str("[^A-Za-z0-9_]");
-            }
             _ => (),
         }
         escape = false;
@@ -736,9 +713,11 @@ mod test_rewrite_regex {
     }
 
     #[test]
-    fn rewrite_classes() {
-        assert_eq!(rewrite(r"\dx"), "[0-9]x");
-        assert_eq!(rewrite(r"\wx"), "[A-Za-z0-9_]x");
-        assert_eq!(rewrite(r"[\d]x"), r"[[0-9]]x");
+    fn dont_rewrite_classes() {
+        assert_eq!(rewrite(r"\dx"), r"\dx");
+        assert_eq!(rewrite(r"\wx"), r"\wx");
+        assert_eq!(rewrite(r"[\d]x"), r"[\d]x");
+        assert_eq!(rewrite(r"[\{}]x"), r"[\{}]x");
+        assert_eq!(rewrite(r"\{\}x"), r"\{\}x");
     }
 }
