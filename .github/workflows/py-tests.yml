@@ -1,0 +1,104 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  wheels:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version:
+          - "3.x"
+          - "pypy-3.10"
+          - "graalpy-24"
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('ua-parser-py/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.cache/pip-graalpy
+          key: ${{ runner.os }}-pip-maturin-${{ matrix.python-version }}
+
+      - uses: PyO3/maturin-action@v1
+        with:
+          args: --release --out dist -m ua-parser-py/Cargo.toml -i python --zig
+          sccache: true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.python-version }}
+          path: dist/*
+          retention-days: 1
+          compression-level: 0
+
+  tests:
+    needs: wheels
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.9"
+          - "3.10"
+          - "3.11"
+          - "3.12"
+          - "3.13"
+          - "pypy-3.10"
+          - "graalpy-24"
+
+        include:
+          - wheel: "3.x"
+          - python-version: "pypy-3.10"
+            wheel: "pypy-3.10"
+          - python-version: "graalpy-24"
+            wheel: "graalpy-24"
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          allow-prereleases: true
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.cache/pip-graalpy
+          key: ${{ runner.os }}-pip-${{ matrix.python-version }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: wheels-${{ matrix.wheel }}
+          path: dist
+      - run: python -mpip install --upgrade pip
+      - run: |
+          if ! pip download --only-binary :all: pyyaml > /dev/null 2>&1
+          then
+              sudo apt install libyaml-dev
+          fi
+      - run: python -mpip install pytest pyyaml
+      - run: python -mpip install --find-links dist ua_parser_rs
+      - run: pytest -v -Werror -ra ua-parser-py
