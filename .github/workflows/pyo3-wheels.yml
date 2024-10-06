@@ -1,10 +1,13 @@
-name: Wheels and Tests
+name: Wheels
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
   workflow_dispatch:
+    inputs:
+      release:
+        description: 'Push wheels to pypi'
+        type: boolean
+        default: false
+        required: true
 
 permissions:
   contents: read
@@ -69,6 +72,8 @@ jobs:
         with:
           name: wheels-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.python-version }}
           path: dist/*
+          retention-days: 1
+          compression-level: 0
 
   sdist:
     runs-on: ubuntu-latest
@@ -85,38 +90,10 @@ jobs:
           name: wheels-sdist
           path: dist
 
-  # TODO: tags don't work because multiple crates in same repo, so
-  # needs some other method of picking versions
-  release:
-    name: Release
-    runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' }}
-    needs: [wheels, sdist]
-    permissions:
-      # Use to sign the release artifacts
-      id-token: write
-      # Used to upload release artifacts
-      contents: write
-      # Used to generate artifact attestation
-      attestations: write
-    environment: release
-    steps:
-      - uses: actions/download-artifact@v4
-      - name: Generate artifact attestation
-        uses: actions/attest-build-provenance@v1
-        with:
-          subject-path: 'wheels-*/*'
-      - name: Publish to PyPI
-        uses: PyO3/maturin-action@v1
-        with:
-          command: upload
-          args: --non-interactive --skip-existing wheels-*/*
-
   tests:
     needs: wheels
     
     strategy:
-      fail-fast: false
       matrix:
         python-version:
           - "3.9"
@@ -190,3 +167,28 @@ jobs:
         run: pip install --find-links dist ua_parser_rs
       - name: Run tests
         run: pytest -v -Werror -ra ua-parser-py
+
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    needs: [tests, sdist]
+    if: ${{ inputs.release == 'true' }}
+    permissions:
+      # Use to sign the release artifacts
+      id-token: write
+      # Used to upload release artifacts
+      contents: write
+      # Used to generate artifact attestation
+      attestations: write
+    environment: release
+    steps:
+      - uses: actions/download-artifact@v4
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: 'wheels-*/*'
+      - name: Publish to PyPI
+        uses: PyO3/maturin-action@v1
+        with:
+          command: upload
+          args: --non-interactive --skip-existing wheels-*/*
