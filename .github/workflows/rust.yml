@@ -8,7 +8,18 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  checks:
+  rust-checks:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Format
+      run: cargo fmt --check
+    - name: clippy
+      if: always()
+      run: cargo clippy
+
+  rust-tests:
     runs-on: ubuntu-latest
 
     steps:
@@ -17,9 +28,5 @@ jobs:
         submodules: true
     - name: Check
       run: cargo check
-    - name: Format
-      run: cargo fmt --check
-    - name: clippy
-      run: cargo clippy
     - name: Run tests
       run: cargo test -r --verbose

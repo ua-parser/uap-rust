@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 jobs:
-  wheels:
+  py-release-wheels:
     strategy:
       matrix:
         python-version:
@@ -75,7 +75,7 @@ jobs:
           retention-days: 1
           compression-level: 0
 
-  sdist:
+  py-release-sdist:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -90,8 +90,8 @@ jobs:
           name: wheels-sdist
           path: dist
 
-  tests:
-    needs: wheels
+  py-release-tests:
+    needs: py-release-wheels
     
     strategy:
       matrix:
@@ -168,10 +168,10 @@ jobs:
       - name: Run tests
         run: pytest -v -Werror -ra ua-parser-py
 
-  release:
+  py-release:
     name: Release
     runs-on: ubuntu-latest
-    needs: [tests, sdist]
+    needs: [py-release-tests, py-release-sdist]
     if: ${{ inputs.release == 'true' }}
     permissions:
       # Use to sign the release artifacts

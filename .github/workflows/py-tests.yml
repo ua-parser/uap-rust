@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 jobs:
-  wheels:
+  py-test-wheels:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -53,8 +53,8 @@ jobs:
           retention-days: 1
           compression-level: 0
 
-  tests:
-    needs: wheels
+  py-tests:
+    needs: py-test-wheels
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

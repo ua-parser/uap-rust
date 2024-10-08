@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 jobs:
-  checks:
+  py-checks:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout working copy
