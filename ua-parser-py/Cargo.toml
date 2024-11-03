@@ -1,8 +1,12 @@
 [package]
 name = "ua-parser-rs"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license = "Apache 2.0"
+description = "A native accelerator for uap-python"
+repository = "https://github.com/ua-parser/uap-rust/"
+homepage = "https://github.com/ua-parser/uap-rust/blob/main/ua-parser/"
+authors = ["masklinn <uap@masklinn.net>"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
@@ -10,5 +14,5 @@ name = "ua_parser_rs"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = "0.22", features = ["extension-module", "abi3", "abi3-py38"] }
+pyo3 = { version = "0.22", features = ["extension-module", "abi3", "abi3-py39"] }
 ua-parser = { version = "0.2.0", path = "../ua-parser" }
