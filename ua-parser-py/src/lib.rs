@@ -25,9 +25,9 @@
 /// them to Parsers as well but that's still very confusing given the
 /// global Parser object, unless *that* gets renamed to Extractor on
 /// the python side, or something.
-use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use std::borrow::Cow::{self, Owned};
+use pyo3::{exceptions::PyValueError, types::PyString};
+use std::borrow::Cow::Owned;
 
 type UAParser = (
     String,
@@ -42,15 +42,15 @@ struct UserAgentExtractor(ua_parser::user_agent::Extractor<'static>);
 #[pyclass(frozen)]
 struct UserAgent {
     #[pyo3(get)]
-    family: String,
+    family: Py<PyString>,
     #[pyo3(get)]
-    major: Option<String>,
+    major: Option<Py<PyString>>,
     #[pyo3(get)]
-    minor: Option<String>,
+    minor: Option<Py<PyString>>,
     #[pyo3(get)]
-    patch: Option<String>,
+    patch: Option<Py<PyString>>,
     #[pyo3(get)]
-    patch_minor: Option<String>,
+    patch_minor: Option<Py<PyString>>,
 }
 #[pymethods]
 impl UserAgentExtractor {
@@ -74,13 +74,13 @@ impl UserAgentExtractor {
             .map_err(|e| PyValueError::new_err(e.to_string()))
             .map(Self)
     }
-    fn extract(&self, s: &str) -> PyResult<Option<UserAgent>> {
+    fn extract(&self, py: Python<'_>, s: &str) -> PyResult<Option<UserAgent>> {
         Ok(self.0.extract(s).map(|v| UserAgent {
-            family: v.family.into_owned(),
-            major: v.major.map(|s| s.to_string()),
-            minor: v.minor.map(|s| s.to_string()),
-            patch: v.patch.map(|s| s.to_string()),
-            patch_minor: v.patch_minor.map(|s| s.to_string()),
+            family: PyString::new_bound(py, &v.family).unbind(),
+            major: v.major.map(|s| PyString::new_bound(py, s).unbind()),
+            minor: v.minor.map(|s| PyString::new_bound(py, s).unbind()),
+            patch: v.patch.map(|s| PyString::new_bound(py, s).unbind()),
+            patch_minor: v.patch_minor.map(|s| PyString::new_bound(py, s).unbind()),
         }))
     }
 }
@@ -98,15 +98,15 @@ struct OSExtractor(ua_parser::os::Extractor<'static>);
 #[pyclass(frozen)]
 struct OS {
     #[pyo3(get)]
-    family: String,
+    family: Py<PyString>,
     #[pyo3(get)]
-    major: Option<String>,
+    major: Option<Py<PyString>>,
     #[pyo3(get)]
-    minor: Option<String>,
+    minor: Option<Py<PyString>>,
     #[pyo3(get)]
-    patch: Option<String>,
+    patch: Option<Py<PyString>>,
     #[pyo3(get)]
-    patch_minor: Option<String>,
+    patch_minor: Option<Py<PyString>>,
 }
 #[pymethods]
 impl OSExtractor {
@@ -130,13 +130,13 @@ impl OSExtractor {
             .map_err(|e| PyValueError::new_err(e.to_string()))
             .map(Self)
     }
-    fn extract(&self, s: &str) -> PyResult<Option<OS>> {
+    fn extract(&self, py: Python<'_>, s: &str) -> PyResult<Option<OS>> {
         Ok(self.0.extract(s).map(|v| OS {
-            family: v.os.into_owned(),
-            major: v.major.map(Cow::into_owned),
-            minor: v.minor.map(Cow::into_owned),
-            patch: v.patch.map(Cow::into_owned),
-            patch_minor: v.patch_minor.map(Cow::into_owned),
+            family: PyString::new_bound(py, &v.os).unbind(),
+            major: v.major.map(|s| PyString::new_bound(py, &s).unbind()),
+            minor: v.minor.map(|s| PyString::new_bound(py, &s).unbind()),
+            patch: v.patch.map(|s| PyString::new_bound(py, &s).unbind()),
+            patch_minor: v.patch_minor.map(|s| PyString::new_bound(py, &s).unbind()),
         }))
     }
 }
@@ -153,11 +153,11 @@ struct DeviceExtractor(ua_parser::device::Extractor<'static>);
 #[pyclass(frozen)]
 struct Device {
     #[pyo3(get)]
-    family: String,
+    family: Py<PyString>,
     #[pyo3(get)]
-    brand: Option<String>,
+    brand: Option<Py<PyString>>,
     #[pyo3(get)]
-    model: Option<String>,
+    model: Option<Py<PyString>>,
 }
 #[pymethods]
 impl DeviceExtractor {
@@ -184,11 +184,11 @@ impl DeviceExtractor {
             .map_err(|e| PyValueError::new_err(e.to_string()))
             .map(Self)
     }
-    fn extract(&self, s: &str) -> PyResult<Option<Device>> {
+    fn extract(&self, py: Python<'_>, s: &str) -> PyResult<Option<Device>> {
         Ok(self.0.extract(s).map(|v| Device {
-            family: v.device.into_owned(),
-            brand: v.brand.map(Cow::into_owned),
-            model: v.model.map(Cow::into_owned),
+            family: PyString::new_bound(py, &v.device).unbind(),
+            brand: v.brand.map(|s| PyString::new_bound(py, &s).unbind()),
+            model: v.model.map(|s| PyString::new_bound(py, &s).unbind()),
         }))
     }
 }
