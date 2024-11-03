@@ -1,6 +1,7 @@
 name: Wheels
 
 on:
+  #pull_request:
   workflow_dispatch:
     inputs:
       release:
@@ -13,45 +14,68 @@ permissions:
   contents: read
 
 jobs:
+  py-wheels-matrix:
+    name: "generate build matrix"
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.make-matrix.outputs.matrix }}
+    steps:
+      - id: make-matrix
+        shell: python
+        name: generate matrix
+        run: |
+          import itertools
+          import json
+          import os
+          import pprint
+
+          builder = {
+              ('linux', 'x86_64'): 'ubuntu-latest',
+              ('linux', 'aarch64'): 'ubuntu-24.04-arm',
+              ('musllinux', 'x86_64'): 'ubuntu-latest',
+              ('musllinux', 'aarch64'): 'ubuntu-24.04-arm',
+              ('macos', 'x86_64'): 'macos-13',
+              ('macos', 'aarch64'): 'macos-latest',
+              ('windows', 'x86_64'): 'windows-latest',
+              ('windows', 'aarch64'): 'windows-11-arm',
+          }
+
+          matrix = [
+              d
+              for d in map(dict, itertools.product(
+                  (('python-version', v) for v in ["3.x", "pypy-3.10", "pypy-3.11", "graalpy-24"]),
+                  (('arch', a) for a in ["x86_64", "aarch64"]),
+                  (('platform', p) for p in ["linux", "musllinux", "windows", "macos"])
+              ))
+              # on windows, only cpython has arm builds (?)
+              if not (
+                  d['platform'] == 'windows'
+              and d['arch'] == 'aarch64'
+              and d['python-version'] != '3.x'
+              )
+              # windows and graal don't work
+              if not (d['platform'] == 'windows' and d['python-version'] == 'graalpy-24')
+          ]
+          for job in matrix:
+              match job['platform']:
+                  case 'linux':
+                    job['manylinux'] = 'auto'
+                    job['args'] = ' --zig'
+                  case 'mussllinux':
+                    job['manylinux'] = 'musllinux_1_2'
+
+              job['runs'] = builder[job['platform'], job['arch']]
+
+          with open(os.environ['GITHUB_OUTPUT'], 'w') as f:
+              f.write("matrix=")
+              json.dump({'include': matrix}, f)
+              f.flush()
+
   py-release-wheels:
+    needs: [py-wheels-matrix]
     strategy:
-      matrix:
-        python-version:
-          - "3.x"
-          - "pypy-3.10"
-          - "graalpy-24"
-        arch:
-          - x86_64
-          - aarch64
-        platform:
-          - linux
-          - musllinux
-          - windows
-          - macos
-
-        exclude:
-          - platform: windows
-            arch: aarch64
-          - platform: windows
-            python-version: graalpy-24
-
-        include:
-          - platform: linux
-            manylinux: auto
-          - platform: musllinux
-            manylinux: musllinux_1_2
-
-          - args: --release --out dist -m ua-parser-py/Cargo.toml -i python
-          - platform: linux
-            args: --release --out dist -m ua-parser-py/Cargo.toml -i python --zig
-          - platform: musllinux
-            args: --release --out dist -m ua-parser-py/Cargo.toml
-
-          - runs: ubuntu-latest
-          - platform: windows
-            runs: windows-latest
-          - platform: macos
-            runs: macos-latest
+      fail-fast: false
+      matrix: ${{fromJson(needs.py-wheels-matrix.outputs.matrix)}}
 
     runs-on: ${{ matrix.runs }}
 
@@ -62,11 +86,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+      # windows/arm doesn't have a rust toolchain by default
+      - if: matrix.platform == 'windows' && matrix.arch == 'aarch64'
+        uses: actions-rust-lang/setup-rust-toolchain@9d7e65c320fdb52dcd45ffaa68deb6c02c8754d9 # 1.12.0
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
-          target: ${{ matrix.arch }}
-          args: ${{ matrix.args }}
+          args: --release --out dist -m ua-parser-py/Cargo.toml -i python ${{ matrix.args }}
           sccache: 'true'
           manylinux: ${{ matrix.manylinux }}
       - name: Upload wheels
@@ -98,6 +124,7 @@ jobs:
     needs: py-release-wheels
     
     strategy:
+      fail-fast: false
       matrix:
         python-version:
           - "3.9"
@@ -106,6 +133,7 @@ jobs:
           - "3.12"
           - "3.13"
           - "pypy-3.10"
+          - "pypy-3.11"
           - "graalpy-24"
         platform:
           - linux
@@ -113,31 +141,50 @@ jobs:
           # - musllinux
           - windows
           - macos
+        arch:
+          - x86_64
+          - aarch64
 
         exclude:
+          - platform: windows
+            arch: aarch64
+            python-version: 3.9
+          - platform: windows
+            python-version: 3.10
+            arch: aarch64
+          - platform: windows
+            arch: aarch64
+            python-version: pypy-3.10
+          - platform: windows
+            arch: aarch64
+            python-version: pypy-3.11
           - platform: windows
             python-version: graalpy-24
 
         include:
-          # would probably need to run qemu inside the thing to full
-          # test the archs...
-          - arch: x86_64
-          - platform: macos
-            arch: aarch64
-
           - wheel: "3.x"
           - python-version: "pypy-3.10"
             wheel: "pypy-3.10"
+          - python-version: "pypy-3.11"
+            wheel: "pypy-3.11"
           - python-version: "graalpy-24"
             wheel: "graalpy-24"
 
-          - runs: ubuntu-latest
+          - runner: ubuntu-latest
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
           - platform: windows
-            runs: windows-latest
+            runner: windows-latest
+          - platform: windows
+            arch: aarch64
+            runner: windows-11-arm
           - platform: macos
-            runs: macos-latest
+            runner: macos-latest
+          - platform: macos
+            arch: x86_64
+            runner: macos-13
 
-    runs-on: ${{ matrix.runs }}
+    runs-on: ${{ matrix.runner }}
 
     steps:
       - name: Checkout working copy
@@ -158,7 +205,7 @@ jobs:
       - name: Update pip
         run: python -mpip install --upgrade pip
       - name: Maybe install libyaml-dev
-        if: matrix.runs == 'ubuntu-latest'
+        if: startsWith(matrix.runs, 'ubuntu-latest')
         run: |
           # if binary wheels are not available for the current
           # package install libyaml-dev so we can install pyyaml
@@ -169,15 +216,15 @@ jobs:
       - name: Install test dependencies
         run: python -mpip install pytest pyyaml
       - name: Install wheel
-        run: pip install --find-links dist ua_parser_rs
+        run: python -mpip install --only-binary ':all:' --no-index --find-links dist ua_parser_rs
       - name: Run tests
-        run: pytest -v -Werror -ra ua-parser-py
+        run: python -mpytest -v -Werror -ra ua-parser-py
 
   py-release:
     name: Release
     runs-on: ubuntu-latest
     needs: [py-release-tests, py-release-sdist]
-    if: ${{ inputs.release }}
+    if: github.event == 'workflow_dispatch' && inputs.release
     permissions:
       # Use to sign the release artifacts
       id-token: write
