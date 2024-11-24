@@ -172,7 +172,7 @@ jobs:
     name: Release
     runs-on: ubuntu-latest
     needs: [py-release-tests, py-release-sdist]
-    if: ${{ inputs.release == 'true' }}
+    if: ${{ inputs.release }}
     permissions:
       # Use to sign the release artifacts
       id-token: write
