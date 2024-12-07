@@ -13,10 +13,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: Format
-      run: cargo fmt --check
-    - name: clippy
-      if: always()
+    - run: cargo fmt --check
+    - if: always()
       run: cargo clippy
 
   rust-tests:
@@ -26,7 +24,16 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: true
-    - name: Check
-      run: cargo check
-    - name: Run tests
-      run: cargo test -r --verbose
+    - run: cargo check
+    - run: cargo test -r --verbose
+
+  rust-latest-deps:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+    - run: cargo update --verbose
+    - run: cargo test -r --verbose
