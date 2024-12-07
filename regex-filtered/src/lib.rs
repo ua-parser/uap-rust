@@ -299,7 +299,7 @@ impl Regexes {
     pub fn matching<'a>(
         &'a self,
         haystack: &'a str,
-    ) -> impl Iterator<Item = (usize, &regex::Regex)> + 'a {
+    ) -> impl Iterator<Item = (usize, &'a regex::Regex)> + 'a {
         self.prefiltered(haystack).filter_map(move |idx| {
             let r = &self.regexes[idx];
             r.is_match(haystack).then_some((idx, r))

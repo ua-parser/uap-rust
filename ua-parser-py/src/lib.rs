@@ -57,7 +57,7 @@ impl UserAgentExtractor {
     #[new]
     fn new(it: &Bound<PyAny>) -> PyResult<Self> {
         use ua_parser::user_agent::{Builder, Parser};
-        it.iter()?
+        it.try_iter()?
             .try_fold(Builder::new(), |s, p| {
                 let p: UAParser = p?.extract()?;
                 s.push(Parser {
@@ -76,11 +76,11 @@ impl UserAgentExtractor {
     }
     fn extract(&self, py: Python<'_>, s: &str) -> PyResult<Option<UserAgent>> {
         Ok(self.0.extract(s).map(|v| UserAgent {
-            family: PyString::new_bound(py, &v.family).unbind(),
-            major: v.major.map(|s| PyString::new_bound(py, s).unbind()),
-            minor: v.minor.map(|s| PyString::new_bound(py, s).unbind()),
-            patch: v.patch.map(|s| PyString::new_bound(py, s).unbind()),
-            patch_minor: v.patch_minor.map(|s| PyString::new_bound(py, s).unbind()),
+            family: PyString::new(py, &v.family).unbind(),
+            major: v.major.map(|s| PyString::new(py, s).unbind()),
+            minor: v.minor.map(|s| PyString::new(py, s).unbind()),
+            patch: v.patch.map(|s| PyString::new(py, s).unbind()),
+            patch_minor: v.patch_minor.map(|s| PyString::new(py, s).unbind()),
         }))
     }
 }
@@ -113,7 +113,7 @@ impl OSExtractor {
     #[new]
     fn new(it: &Bound<PyAny>) -> PyResult<Self> {
         use ua_parser::os::{Builder, Parser};
-        it.iter()?
+        it.try_iter()?
             .try_fold(Builder::new(), |s, p| {
                 let p: OSParser = p?.extract()?;
                 s.push(Parser {
@@ -132,11 +132,11 @@ impl OSExtractor {
     }
     fn extract(&self, py: Python<'_>, s: &str) -> PyResult<Option<OS>> {
         Ok(self.0.extract(s).map(|v| OS {
-            family: PyString::new_bound(py, &v.os).unbind(),
-            major: v.major.map(|s| PyString::new_bound(py, &s).unbind()),
-            minor: v.minor.map(|s| PyString::new_bound(py, &s).unbind()),
-            patch: v.patch.map(|s| PyString::new_bound(py, &s).unbind()),
-            patch_minor: v.patch_minor.map(|s| PyString::new_bound(py, &s).unbind()),
+            family: PyString::new(py, &v.os).unbind(),
+            major: v.major.map(|s| PyString::new(py, &s).unbind()),
+            minor: v.minor.map(|s| PyString::new(py, &s).unbind()),
+            patch: v.patch.map(|s| PyString::new(py, &s).unbind()),
+            patch_minor: v.patch_minor.map(|s| PyString::new(py, &s).unbind()),
         }))
     }
 }
@@ -164,7 +164,7 @@ impl DeviceExtractor {
     #[new]
     fn new(it: &Bound<PyAny>) -> PyResult<Self> {
         use ua_parser::device::{Builder, Flag, Parser};
-        it.iter()?
+        it.try_iter()?
             .try_fold(Builder::new(), |s, p| {
                 let p: DeviceParser = p?.extract()?;
                 s.push(Parser {
@@ -186,9 +186,9 @@ impl DeviceExtractor {
     }
     fn extract(&self, py: Python<'_>, s: &str) -> PyResult<Option<Device>> {
         Ok(self.0.extract(s).map(|v| Device {
-            family: PyString::new_bound(py, &v.device).unbind(),
-            brand: v.brand.map(|s| PyString::new_bound(py, &s).unbind()),
-            model: v.model.map(|s| PyString::new_bound(py, &s).unbind()),
+            family: PyString::new(py, &v.device).unbind(),
+            brand: v.brand.map(|s| PyString::new(py, &s).unbind()),
+            model: v.model.map(|s| PyString::new(py, &s).unbind()),
         }))
     }
 }
