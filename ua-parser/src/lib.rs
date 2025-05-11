@@ -176,7 +176,7 @@ pub mod user_agent {
         /// Initialise an empty builder.
         pub fn new() -> Self {
             Self {
-                builder: regex_filtered::Builder::new_atom_len(2),
+                builder: regex_filtered::Builder::new_atom_len(3),
                 repl: Vec::new(),
             }
         }
@@ -343,7 +343,7 @@ pub mod os {
         ///
         pub fn new() -> Self {
             Self {
-                builder: regex_filtered::Builder::new_atom_len(2),
+                builder: regex_filtered::Builder::new_atom_len(3),
                 repl: Vec::new(),
             }
         }
