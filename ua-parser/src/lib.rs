@@ -664,7 +664,7 @@ fn rewrite_regex(re: &str) -> std::borrow::Cow<'_, str> {
                 inclass += 1;
             }
             ']' if !escape => {
-                inclass += 1;
+                inclass -= 1;
             }
             // no need for special cases because regex allows nesting
             // character classes, whereas js or python don't \o/
@@ -719,6 +719,18 @@ mod test_rewrite_regex {
         assert_eq!(rewrite("(.{0,100})"), "(.*)");
         assert_eq!(rewrite("(.{1,50})"), "(.{1,50})");
         assert_eq!(rewrite(".{1,300}x"), ".+x");
+    }
+
+    #[test]
+    fn rewrite_all_repetitions() {
+        assert_eq!(
+            rewrite("; {0,2}(T-(?:07|[^0][0-9])[^;/]{1,100}?)(?: Build|\\) AppleWebKit)"),
+            "; {0,2}(T-(?:07|[^0][0-9])[^;/]+?)(?: Build|\\) AppleWebKit)",
+        );
+        assert_eq!(
+            rewrite("; {0,2}(SH\\-?[0-9][0-9][^;/]{1,100}|SBM[0-9][^;/]{1,100}?)(?: Build|\\) AppleWebKit)"),
+            "; {0,2}(SH\\-?[0-9][0-9][^;/]+|SBM[0-9][^;/]+?)(?: Build|\\) AppleWebKit)",
+        )
     }
 
     #[test]
