@@ -1,7 +1,7 @@
 /target
 .DS_Store
 *.dSYM/
-regex-filtered/re2/flake.lock
-regex-filtered/re2/bench
+flake.lock
 .tox/
+*/uv.lock
 __pycache__

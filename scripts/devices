@@ -1,0 +1,121 @@
+#!/usr/bin/env python
+# /// script
+# requires-python = ">=3.10"
+# dependencies = [
+#     "pyyaml",
+# ]
+# ///
+r"""Compiles regexes.yaml to just the device regexps, with rewriting:
+
+- Rust's `regex` implements perl-style character classes with full
+  unicode semantics making them much more expensive than re2's
+  ascii-only semantics, so compile down the most frequent ones down to
+  ascii classes.
+
+  regexes.yaml uses \d, \w, \s, \S, \b, and the first one is the most
+  common by two orders of magnitude (but convert \w as well because I
+  dun so already, converting \s might be a good idea too)
+
+- Both `regex` and `re2` suffer tremendously from large bounded
+  repetitions as they need to create a *ton* of states to keep track
+  of the limit. This mostly affects memory consumption (and the issue
+  compounds when captures are added to the mix), but there is a minor
+  CPU hit as well.
+
+  In regexes.yaml, large bounded repetitions were introduced only to
+  limit the risks of catastrophic backtracking in backtracking
+  engines. Which neither re2 nor regex are.
+
+  So compile large bounded repetition (where heuristically "large" is
+  3 digits in the upper bound) back to simple unbounded repetitions.
+  Note that this is only done for a lower bound of `0` or `1`, but
+  that's the case of all large bounded repetitions in regexes.yaml.
+"""
+import string
+import sys
+
+from yaml import SafeLoader, load
+
+def main() -> None:
+    with open(sys.argv[1]) as f:
+        regexes = load(f, Loader=SafeLoader)
+    for dev in regexes['device_parsers']:
+        print(
+            f'(?{f})' if (f := dev.get('regex_flag')) else '',
+            rewrite(dev['regex']),
+            sep='',
+        )
+
+def rewrite(re: str) -> str:
+    from_ = 0
+    out = []
+    it = enumerate(re)
+    escape = False
+    inclass = False
+
+    cont = True
+    while cont and (e := next(it, None)):
+        idx, c = e
+        match c:
+            case '\\' if not escape:
+                escape = True
+                continue
+            case '[' if not escape:
+                inclass = True
+            case ']' if not escape:
+                inclass = False
+            case 'd' if escape:
+                out.append(re[from_:idx-1])
+                from_ = idx+1
+                if inclass:
+                    out.append('0-9')
+                else:
+                    out.append('[0-9]')
+            case 'w' if escape:
+                out.append(re[from_:idx-1])
+                from_ = idx+1
+                if inclass:
+                    out.append('A-Za-z0-9_')
+                else:
+                    out.append('[A-Za-z0-9_]')
+            case '{' if not escape and not inclass:
+                if not idx:
+                    return re
+
+                try:
+                    _, start = next(it)
+                except StopIteration:
+                    continue
+                if start not in '01':
+                    continue
+
+                try:
+                    _, comma = next(it)
+                except StopIteration:
+                    continue
+                else:
+                    if comma != ',':
+                        continue
+
+                digits = 0
+                for ri, rc in it:
+                    match rc:
+                        case c if c in string.digits:
+                            digits += 1
+                        case '}' if digits > 2:
+                            out.append(re[from_:idx])
+                            from_ = ri + 1
+                            out.append('*' if start == '0' else '+')
+                        case _:
+                            break
+            case _:
+                pass
+        escape = False
+
+    if from_ == 0:
+        return re
+    out.append(re[from_:])
+    return ''.join(out)
+
+if __name__ == "__main__":
+    main()
