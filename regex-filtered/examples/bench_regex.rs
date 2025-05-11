@@ -27,7 +27,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .lines()
         .collect::<Result<Vec<String>, _>>()?;
 
-    let f = regex_filtered::Builder::new().push_all(&regexes)?.build()?;
+    let f = regex_filtered::Builder::new_atom_len(2)
+        .push_all(&regexes)?
+        .build()?;
     eprintln!(
         "{} regexes in {}s",
         regexes.len(),

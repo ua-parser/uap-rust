@@ -36,7 +36,7 @@ int main(const int argc, const char* argv[]) {
   std::ifstream regexes_f(argv[1]);
 
   re2::RE2::Options opt;
-  re2::FilteredRE2 f(3);
+  re2::FilteredRE2 f(2);
   int id;
 
   std::string line;
