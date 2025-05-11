@@ -175,7 +175,10 @@ pub mod user_agent {
     impl<'a> Builder<'a> {
         /// Initialise an empty builder.
         pub fn new() -> Self {
-            Self::default()
+            Self {
+                builder: regex_filtered::Builder::new_atom_len(2),
+                repl: Vec::new(),
+            }
         }
 
         /// Build the extractor, may be called without pushing any
@@ -339,7 +342,10 @@ pub mod os {
     impl<'a> Builder<'a> {
         ///
         pub fn new() -> Self {
-            Self::default()
+            Self {
+                builder: regex_filtered::Builder::new_atom_len(2),
+                repl: Vec::new(),
+            }
         }
 
         /// Builds the [`Extractor`], may fail if building the
@@ -503,7 +509,10 @@ pub mod device {
         /// Creates a builder in the default configurtion, which is
         /// the only configuration.
         pub fn new() -> Self {
-            Self::default()
+            Self {
+                builder: regex_filtered::Builder::new_atom_len(2),
+                repl: Vec::new(),
+            }
         }
 
         /// Builds an Extractor, may fail if compiling the prefilter fails.
