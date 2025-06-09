@@ -14,5 +14,5 @@ name = "ua_parser_rs"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = "0.24", features = ["extension-module", "abi3", "abi3-py39"] }
+pyo3 = { version = "0.25", features = ["extension-module", "abi3", "abi3-py39"] }
 ua-parser = { version = "0.2.1", path = "../ua-parser" }
