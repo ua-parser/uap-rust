@@ -15,6 +15,7 @@ jobs:
         python-version:
           - "3.x"
           - "pypy-3.10"
+          - "pypy-3.11"
           - "graalpy-24"
 
     steps:
@@ -68,12 +69,15 @@ jobs:
           - "3.12"
           - "3.13"
           - "pypy-3.10"
+          - "pypy-3.11"
           - "graalpy-24"
 
         include:
           - wheel: "3.x"
           - python-version: "pypy-3.10"
             wheel: "pypy-3.10"
+          - python-version: "pypy-3.11"
+            wheel: "pypy-3.11"
           - python-version: "graalpy-24"
             wheel: "graalpy-24"
 
