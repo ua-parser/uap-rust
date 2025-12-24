@@ -193,7 +193,7 @@ impl DeviceExtractor {
     }
 }
 
-#[pymodule]
+#[pymodule(gil_used = false)]
 fn ua_parser_rs(m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<UserAgentExtractor>()?;
     m.add_class::<OSExtractor>()?;

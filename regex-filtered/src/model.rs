@@ -382,7 +382,7 @@ impl Visitor for InfoVisitor {
                     } else {
                         Info::Exact(
                             c.iter()
-                                .flat_map(|r| (r.start()..=r.end()))
+                                .flat_map(|r| r.start()..=r.end())
                                 .map(char::to_lowercase)
                                 .map(String::from_iter)
                                 .map(LengthThenLex)
