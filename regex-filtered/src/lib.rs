@@ -282,7 +282,7 @@ impl Regexes {
     }
 
     #[inline]
-    fn prefiltered(&self, haystack: &str) -> impl Iterator<Item = usize> {
+    fn prefiltered(&self, haystack: &str) -> impl Iterator<Item = usize> + use<> {
         self.mapper.atom_to_re(self.prefilter(haystack)).into_iter()
     }
 

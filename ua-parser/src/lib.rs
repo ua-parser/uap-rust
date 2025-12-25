@@ -737,7 +737,9 @@ mod test_rewrite_regex {
             "; {0,2}(T-(?:07|[^0][0-9])[^;/]+?)(?: Build|\\) AppleWebKit)",
         );
         assert_eq!(
-            rewrite("; {0,2}(SH\\-?[0-9][0-9][^;/]{1,100}|SBM[0-9][^;/]{1,100}?)(?: Build|\\) AppleWebKit)"),
+            rewrite(
+                "; {0,2}(SH\\-?[0-9][0-9][^;/]{1,100}|SBM[0-9][^;/]{1,100}?)(?: Build|\\) AppleWebKit)"
+            ),
             "; {0,2}(SH\\-?[0-9][0-9][^;/]+|SBM[0-9][^;/]+?)(?: Build|\\) AppleWebKit)",
         )
     }
