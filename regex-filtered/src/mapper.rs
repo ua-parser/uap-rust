@@ -1,3 +1,5 @@
+#![doc(hidden)]
+
 use std::fmt::Display;
 use std::fmt::Formatter;
 
@@ -336,6 +338,54 @@ mod test {
         assert_eq!(m.propagate_match(&mut s).into_vec(), vec![0]);
     }
 
+    #[test]
+    fn casefold() {
+        // U+017F LATIN SMALL LETTER LONG S (ſ) compat-decomposes into
+        // s, and both uppercase into S. re2 does not do that because
+        // it doesn't do unicode
+        let mut b = Builder::new(0);
+        b.push(Model::new(&parse("(?i)s").unwrap()).unwrap());
+        let (_, mut atoms) = b.build();
+        atoms.sort();
+        assert_eq!(&*atoms, &["s", "ſ"])
+    }
+
+    /// A lower bound on a repetition is the same as having the
+    /// expanded literal
+    #[test]
+    fn repetition_lower_bound_expansion() {
+        let mut b = Builder::new(0);
+        b.push(Model::new(&parse("testx{4}").unwrap()).unwrap());
+        let (_, atoms) = b.build();
+        assert_eq!(&*atoms, &["testxxxx"]);
+
+        let mut b = Builder::new(0);
+        b.push(Model::new(&parse("test(xy){10}").unwrap()).unwrap());
+        let (_, atoms) = b.build();
+        assert_eq!(&*atoms, &["testxyxyxyxyxyxyxyxyxyxy"]);
+
+        let mut b = Builder::new(0);
+        b.push(Model::new(&parse("testx{4,6}").unwrap()).unwrap());
+        let (_, mut atoms) = b.build();
+        atoms.sort();
+        assert_eq!(&*atoms, &["test", "xxxx"]);
+
+        let mut b = Builder::new(0);
+        b.push(Model::new(&parse("[ab]{3}").unwrap()).unwrap());
+        let (_, mut atoms) = b.build();
+        atoms.sort();
+        assert_eq!(
+            &*atoms,
+            &["aaa", "aab", "aba", "abb", "baa", "bab", "bba", "bbb"],
+        );
+
+        let mut b = Builder::new(0);
+
+        b.push(Model::new(&parse("test(xy|zt){10}").unwrap()).unwrap());
+        let (_, mut atoms) = b.build();
+        atoms.sort();
+        assert_eq!(&*atoms, ["test", "xy", "zt"]);
+    }
     fn check_patterns(patterns: &'static [&'static str], expected: &'static [&'static str]) {
         let mut b = Builder::new(3);
         for pattern in patterns {
