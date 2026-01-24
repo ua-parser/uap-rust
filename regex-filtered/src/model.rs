@@ -1,3 +1,5 @@
+#![doc(hidden)]
+
 use itertools::iproduct;
 use regex_syntax::hir::{self, Hir, HirKind, Visitor, visit};
 use std::cell::Cell;
@@ -393,19 +395,56 @@ impl Visitor for InfoVisitor {
             // Apparently re2 and regex have inverse choices, re2
             // normalises repetitions to */+/?, regex normalises
             // everything to {a, b}, so this may or may make any sense
-            HirKind::Repetition(hir::Repetition { min, .. }) => {
-                if *min == 0 {
-                    // corresponds to */? (star/quest)
-                    self.stack.pop();
-                    self.stack.push(Info::Match(Model::all()));
-                } else {
-                    // corresponds to +
-                    let arg = self
-                        .stack
-                        .pop()
-                        .expect("a repetition to be associated with a pattern to repeat")
-                        .take_match();
-                    self.stack.push(Info::Match(arg));
+            HirKind::Repetition(hir::Repetition { min, max, .. }) => {
+                match min {
+                    0 => {
+                        self.stack.pop();
+                        self.stack.push(Info::Match(Model::all()));
+                    }
+                    &min => {
+                        let arg = self
+                            .stack
+                            .pop()
+                            .expect("a repetition to be associated with a pattern to repeat");
+                        match arg {
+                            Info::Exact(mut arg) if arg.len() == 1 => {
+                                let s = arg.pop_first().unwrap();
+                                let set = [LengthThenLex(s.repeat(min as _))].into();
+                                if Some(min) == *max {
+                                    self.stack.push(Info::Exact(set));
+                                } else {
+                                    self.stack.push(Info::Match(Model::or_strings(set)));
+                                }
+                            }
+                            // same limit as Concat
+                            // TODO: if arg.len() is < 4, we can splat it
+                            //       to the limit and decrease min by that
+                            //       much...
+                            Info::Exact(arg) if arg.len().pow(min) <= 16 => {
+                                let mut acc = arg.clone();
+                                for _ in 1..min {
+                                    acc = iproduct!(&acc, &arg)
+                                        .map(|(s, ss)| {
+                                            let mut r = String::with_capacity(s.len() + ss.len());
+                                            r.push_str(s);
+                                            r.push_str(ss);
+                                            LengthThenLex(r)
+                                        })
+                                        .collect();
+                                }
+                                if Some(min) == *max {
+                                    self.stack.push(Info::Exact(acc));
+                                } else {
+                                    self.stack.push(Info::Match(Model::or_strings(acc)));
+                                }
+                            }
+                            arg => {
+                                let m = std::iter::repeat_n(arg.take_match(), min as _)
+                                    .fold(Model::all(), Model::and);
+                                self.stack.push(Info::Match(m));
+                            }
+                        }
+                    }
                 }
             }
             // should just leave its child on the stack for whoever
