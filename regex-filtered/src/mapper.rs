@@ -386,6 +386,37 @@ mod test {
         atoms.sort();
         assert_eq!(&*atoms, ["test", "xy", "zt"]);
     }
+
+    #[test]
+    fn alternation() {
+        let mut b = Builder::new(0);
+        b.push(Model::new(&parse("(Bot|Yeti)-Mobile").unwrap()).unwrap());
+        let (_, mut atoms) = b.build();
+        atoms.sort();
+        assert_eq!(&*atoms, &["bot-mobile", "yeti-mobile"]);
+
+        let mut b = Builder::new(0);
+        b.push(Model::new(&parse("(?i)(Bot|Yeti)-Mobile").unwrap()).unwrap());
+        let (_, mut atoms) = b.build();
+        atoms.sort();
+        assert_eq!(&*atoms, &["bot-mobile", "yeti-mobile"]);
+
+        let mut b = Builder::new(0);
+        b.push(Model::new(&parse("MW(0[789]|10)").unwrap()).unwrap());
+        let (_, mut atoms) = b.build();
+        atoms.sort();
+        assert_eq!(&*atoms, &["mw07", "mw08", "mw09", "mw10"]);
+
+        let mut b = Builder::new(0);
+        b.push(Model::new(&parse("T-(?:07|[^0][0-9])").unwrap()).unwrap());
+        let (_, mut atoms) = b.build();
+        atoms.sort();
+        assert_eq!(
+            &*atoms,
+            &["0", "07", "1", "2", "3", "4", "5", "6", "7", "8", "9", "t-"]
+        );
+    }
+
     fn check_patterns(patterns: &'static [&'static str], expected: &'static [&'static str]) {
         let mut b = Builder::new(3);
         for pattern in patterns {
@@ -469,6 +500,23 @@ mod test {
         let (_, mut atoms) = b.build();
         atoms.sort();
 
-        assert_eq!(atoms, vec!["", "-r", "add=;aa", "}"],);
+        assert_eq!(&*atoms, &["", "-r", "add=;aa", "}"],);
+    }
+
+    #[test]
+    fn test_concat() {
+        let mut b = Builder::new(3);
+        b.push(
+            Model::new(
+                &parse(
+                    r"Android Application[^\-]+ - (Sony) ?(Ericsson|) (.+) [A-Za-z0-9_]{1,20} - ",
+                )
+                .unwrap(),
+            )
+            .unwrap(),
+        );
+        let (_, mut atoms) = b.build();
+        atoms.sort();
+        assert_eq!(&*atoms, &[" - ", " - sony", "android application",])
     }
 }
