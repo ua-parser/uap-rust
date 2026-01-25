@@ -7,6 +7,8 @@ use std::fmt::{Display, Formatter, Write};
 use std::str::Utf8Error;
 use std::{collections::BTreeSet, ops::Deref};
 
+const EXACT_CROSS_LIMIT: usize = 16;
+
 #[derive(Clone, Debug)]
 pub enum Model {
     /// Everything matches.
@@ -420,7 +422,7 @@ impl Visitor for InfoVisitor {
                             // TODO: if arg.len() is < 4, we can splat it
                             //       to the limit and decrease min by that
                             //       much...
-                            Info::Exact(arg) if arg.len().pow(min) <= 16 => {
+                            Info::Exact(arg) if arg.len().pow(min) <= EXACT_CROSS_LIMIT => {
                                 let mut acc = arg.clone();
                                 for _ in 1..min {
                                     acc = iproduct!(&acc, &arg)
@@ -495,34 +497,48 @@ impl Visitor for InfoVisitor {
                     Info::Match(matches.into_iter().fold(Model::none(), Model::or))
                 });
             }
-            // and this one gets really painful, like above we need to
-            // take the topn but unlike the above we can't reorder all
-            // our stuff around
             HirKind::Concat(c) => {
                 let topn = self.stack.len() - c.len()..;
 
                 // ALL is the identity element of AND
                 let mut result = Info::Match(Model::all());
+                let mut resulted = false;
                 let mut exacts = BTreeSet::new();
                 for info in self.stack.drain(topn) {
                     match info {
                         Info::Exact(set) if exacts.is_empty() => {
                             exacts = set;
                         }
-                        Info::Exact(set) if set.len() * exacts.len() <= 16 => {
-                            // Not useful to consume the existing
-                            // `exacts` up-front, as each item has to
-                            // be splatted over `set`.
-                            exacts = iproduct!(&exacts, &set)
-                                .map(|(s, ss)| {
-                                    let mut r = String::with_capacity(s.len() + ss.len());
-                                    r.push_str(s);
-                                    r.push_str(ss);
-                                    LengthThenLex(r)
-                                })
-                                .collect();
+                        Info::Exact(set) if exacts.len() == 1 && set.len() == 1 => {
+                            let r = exacts.pop_first().expect("exacts to be non-empty").0
+                                + set.first().expect("set to be non-empty");
+
+                            exacts.insert(LengthThenLex(r));
+                        }
+                        Info::Exact(set) => {
+                            if set.len() * exacts.len() <= EXACT_CROSS_LIMIT {
+                                // Not useful to consume the existing
+                                // `exacts` up-front, as each item has to
+                                // be splatted over `set`.
+                                exacts = iproduct!(&exacts, &set)
+                                    .map(|(s, ss)| {
+                                        let mut r = String::with_capacity(s.len() + ss.len());
+                                        r.push_str(s);
+                                        r.push_str(ss);
+                                        LengthThenLex(r)
+                                    })
+                                    .collect();
+                            } else {
+                                resulted = true;
+                                result = Info::Match(Model::and(
+                                    result.take_match(),
+                                    Model::or_strings(exacts),
+                                ));
+                                exacts = set;
+                            }
                         }
                         i => {
+                            resulted = true;
                             // here AND the combination of info,
                             // exact, and the existing garbage
                             let mut p = result.take_match();
@@ -535,14 +551,13 @@ impl Visitor for InfoVisitor {
                     }
                 }
 
-                if exacts.is_empty() {
-                    self.stack.push(result);
+                self.stack.push(if exacts.is_empty() {
+                    result
+                } else if !resulted {
+                    Info::Exact(exacts)
                 } else {
-                    self.stack.push(Info::Match(Model::and(
-                        result.take_match(),
-                        Model::or_strings(exacts),
-                    )));
-                }
+                    Info::Match(Model::and(result.take_match(), Model::or_strings(exacts)))
+                });
             }
         }
         Ok(())
