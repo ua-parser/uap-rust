@@ -380,11 +380,46 @@ mod test {
         );
 
         let mut b = Builder::new(0);
-
         b.push(Model::new(&parse("test(xy|zt){10}").unwrap()).unwrap());
         let (_, mut atoms) = b.build();
         atoms.sort();
         assert_eq!(&*atoms, ["test", "xy", "zt"]);
+
+        let mut b = Builder::new(0);
+        b.push(Model::new(&parse("x{10}a").unwrap()).unwrap());
+        let (_, mut atoms) = b.build();
+        atoms.sort();
+        assert_eq!(&*atoms, ["xxxxxxxxxxa"]);
+
+        let mut b = Builder::new(0);
+        b.push(Model::new(&parse("x{10,11}a").unwrap()).unwrap());
+        let (_, mut atoms) = b.build();
+        atoms.sort();
+        assert_eq!(&*atoms, ["a", "xxxxxxxxxx"]);
+
+        let mut b = Builder::new(0);
+        b.push(Model::new(&parse("(ab|cd?){10}").unwrap()).unwrap());
+        let (_, mut atoms) = b.build();
+        atoms.sort();
+        assert_eq!(&*atoms, ["ab", "c"]);
+    }
+
+    /// re2 limits repetitions to 1000 which limits the size explosion
+    /// of atoms, regexp does not mind any repetition which can
+    /// trigger resource extension in filtered during repetition expansion
+    #[test]
+    fn repetition_excessive() {
+        let mut b = Builder::new(0);
+        b.push(Model::new(&parse("x{10000000}").unwrap()).unwrap());
+        let (_, atoms) = b.build();
+        assert_eq!(atoms.len(), 1);
+        assert!(atoms[0].len() < 4_000);
+
+        let mut b = Builder::new(0);
+        b.push(Model::new(&parse("x{10000000}a").unwrap()).unwrap());
+        let (_, atoms) = b.build();
+        assert_eq!(atoms.len(), 2);
+        assert!(atoms.contains(&String::from("a")));
     }
 
     #[test]
