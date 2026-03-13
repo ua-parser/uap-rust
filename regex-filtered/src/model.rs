@@ -411,10 +411,18 @@ impl Visitor for InfoVisitor {
                         match arg {
                             Info::Exact(mut arg) if arg.len() == 1 => {
                                 let s = arg.pop_first().unwrap();
-                                let set = [LengthThenLex(s.repeat(min as _))].into();
-                                if Some(min) == *max {
+                                let minsize = min as usize;
+                                // re2 limits repetitions to 1000, but
+                                // allows literal with ~no length
+                                // limit to be repeated which feels a
+                                // bit strange and irregular, instead
+                                // limit atoms expansion to 2KB
+                                if Some(min) == *max && (minsize * s.len() < 2048) {
+                                    let set = [LengthThenLex(s.repeat(minsize))].into();
                                     self.stack.push(Info::Exact(set));
                                 } else {
+                                    let min = (2048 / s.len()).clamp(1, minsize);
+                                    let set = [LengthThenLex(s.repeat(min))].into();
                                     self.stack.push(Info::Match(Model::or_strings(set)));
                                 }
                             }
@@ -441,9 +449,7 @@ impl Visitor for InfoVisitor {
                                 }
                             }
                             arg => {
-                                let m = std::iter::repeat_n(arg.take_match(), min as _)
-                                    .fold(Model::all(), Model::and);
-                                self.stack.push(Info::Match(m));
+                                self.stack.push(Info::Match(arg.take_match()));
                             }
                         }
                     }
