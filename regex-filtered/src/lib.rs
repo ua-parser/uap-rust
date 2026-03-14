@@ -439,4 +439,14 @@ mod test {
             .push_all(b"a\nb\nc\nd\n".lines().map(|l| l.unwrap()))
             .unwrap();
     }
+
+    #[test]
+    fn alternate() {
+        let f = Builder::new().push("abc|").unwrap().build().unwrap();
+        assert_eq!(
+            f.matching("abcde").map(|(idx, _)| idx).collect_vec(),
+            vec![0],
+        );
+        assert_eq!(f.matching("xyz").map(|(idx, _)| idx).collect_vec(), vec![0],);
+    }
 }
