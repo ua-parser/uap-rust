@@ -554,4 +554,13 @@ mod test {
         atoms.sort();
         assert_eq!(&*atoms, &[" - ", " - sony", "android application",])
     }
+
+    #[test]
+    fn test_alternate_empty() {
+        let mut b = Builder::new(0);
+        b.push(Model::new(&parse("a|").unwrap()).unwrap());
+        let (_, mut atoms) = b.build();
+        atoms.sort();
+        assert_eq!(&*atoms, ["", "a"]);
+    }
 }
