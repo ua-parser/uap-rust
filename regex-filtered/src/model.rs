@@ -365,7 +365,10 @@ impl Visitor for InfoVisitor {
                     // I understand that's just a complicated way to
                     // build a singleton set of the payload?
                     self.stack.push(Info::Exact(
-                        [LengthThenLex(std::str::from_utf8(data)?.to_lowercase())].into(),
+                        [LengthThenLex(
+                            std::str::from_utf8(data)?.to_ascii_lowercase(),
+                        )]
+                        .into(),
                     ));
                 }
             }
@@ -387,8 +390,8 @@ impl Visitor for InfoVisitor {
                         Info::Exact(
                             c.iter()
                                 .flat_map(|r| r.start()..=r.end())
-                                .map(char::to_lowercase)
-                                .map(String::from_iter)
+                                .map(|c| c.to_ascii_lowercase())
+                                .map(String::from)
                                 .map(LengthThenLex)
                                 .collect(),
                         )

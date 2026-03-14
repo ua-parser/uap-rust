@@ -449,4 +449,34 @@ mod test {
         );
         assert_eq!(f.matching("xyz").map(|(idx, _)| idx).collect_vec(), vec![0],);
     }
+
+    #[test]
+    fn non_ascii() {
+        let f = Builder::new().push("ΛΜΝΟΠ").unwrap().build().unwrap();
+        assert_eq!(
+            f.matching("ΛΜΝΟΠ").map(|(idx, _)| idx).collect_vec(),
+            vec![0],
+        );
+        assert_eq!(
+            f.matching("λμνοπ").map(|(idx, _)| idx).collect_vec(),
+            vec![],
+        );
+        assert_eq!(
+            f.matching("Λμνοπ").map(|(idx, _)| idx).collect_vec(),
+            vec![],
+        );
+        let f = Builder::new().push("(?i)ΛΜΝΟΠ").unwrap().build().unwrap();
+        assert_eq!(
+            f.matching("ΛΜΝΟΠ").map(|(idx, _)| idx).collect_vec(),
+            vec![0],
+        );
+        assert_eq!(
+            f.matching("λμνοπ").map(|(idx, _)| idx).collect_vec(),
+            vec![0],
+        );
+        assert_eq!(
+            f.matching("Λμνοπ").map(|(idx, _)| idx).collect_vec(),
+            vec![0],
+        );
+    }
 }
