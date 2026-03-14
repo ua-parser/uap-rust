@@ -187,7 +187,7 @@ impl Display for Mapper {
             writeln!(f, "\tatom {i} -> entry {e}")?;
             let mut s = IntSet::new(self.entries.len());
             s.insert(e);
-            for r in self.propagate_match(&mut s).into_vec() {
+            for r in self.propagate_match(&mut s) {
                 writeln!(f, "\t\tregex {r}")?;
             }
         }
@@ -250,7 +250,7 @@ impl Mapper {
         let mut matched_atom_ids = IntSet::new(self.entries.len());
         matched_atom_ids.extend(atoms.into_iter().map(|idx| self.atom_to_entry[idx]));
 
-        let mut regexps = self.propagate_match(&mut matched_atom_ids).into_vec();
+        let mut regexps = self.propagate_match(&mut matched_atom_ids);
 
         regexps.extend(&self.unfiltered);
 
@@ -258,10 +258,10 @@ impl Mapper {
         regexps
     }
 
-    fn propagate_match(&self, work: &mut IntSet) -> IntSet {
+    fn propagate_match(&self, work: &mut IntSet) -> Vec<usize> {
         let mut count = vec![0; self.entries.len()];
 
-        let mut regexps = IntSet::new(self.regexp_count);
+        let mut regexps = Vec::with_capacity(self.regexp_count);
 
         let mut i = 0;
         while i < work.len() {
@@ -332,10 +332,10 @@ mod test {
         assert_eq!(&m.atom_to_entry, &[0, 1]);
         let mut s = IntSet::new(3);
         s.insert(0);
-        assert_eq!(m.propagate_match(&mut s).into_vec(), vec![0]);
+        assert_eq!(m.propagate_match(&mut s), vec![0]);
         let mut s = IntSet::new(3);
         s.insert(1);
-        assert_eq!(m.propagate_match(&mut s).into_vec(), vec![0]);
+        assert_eq!(m.propagate_match(&mut s), vec![0]);
     }
 
     #[test]
