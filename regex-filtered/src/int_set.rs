@@ -25,10 +25,6 @@ impl IntSet {
     pub fn len(&self) -> usize {
         self.dense.len()
     }
-
-    pub fn into_vec(self) -> Vec<usize> {
-        self.dense
-    }
 }
 
 impl std::ops::Index<usize> for IntSet {
