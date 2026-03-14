@@ -1,7 +1,7 @@
 CXXFLAGS += -std=c++20 -Wall -Werror -g -fPIC -O3
 LDFLAGS += -lre2
 
-.PHONY: bench atomizer
+.PHONY: bench atomizer clean
 
 bench: target/bench_re2 target/devices.regexes target/release/examples/bench_regex
 	/usr/bin/time -l target/bench_re2 \
@@ -23,6 +23,13 @@ atomizer: target/devices.regexes target/atomizer target/release/examples/atomize
 		rm -rf "$$tmp" ; \
 	    fi; \
 	done < target/devices.regexes
+
+clean:
+	@rm target/devices.regexes
+	@rm target/bench_re2
+	@rm target/atomizer
+	@rm target/release/examples/atomizer
+	@rm target/release/examples/bench_regex
 
 target/atomizer: regex-filtered/re2/atomizer.cpp
 	@mkdir -p target
