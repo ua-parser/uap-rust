@@ -1,5 +1,5 @@
 [workspace]
-members = ["regex-filtered", "ua-parser", "ua-parser-py"]
+members = ["regex-filtered", "ua-parser"]
 resolver = "2"
 
 [profile.release]
