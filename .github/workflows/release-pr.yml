@@ -3,7 +3,7 @@ name: Create update PR
 on:
   push:
     branches:
-    - master
+    - main
 
 concurrency:
   group: release-plz-${{ github.ref }}
