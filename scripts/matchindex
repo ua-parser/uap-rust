@@ -1,0 +1,32 @@
+#!/usr/bin/env python
+
+import argparse
+import re
+
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    'regexes',
+    help="regexes to try on the user agents",
+)
+parser.add_argument(
+    'useragents',
+    type=argparse.FileType(),
+    help="user agents to parse, `-` for stdin",
+)
+args = parser.parse_args()
+
+with open(args.regexes) as r:
+    regexes = [
+        re.compile(pattern.rstrip('\n'))
+        for pattern in r
+    ]
+
+with args.useragents as r:
+    for u in r:
+        u = u.rstrip('\n')
+        for i, p in enumerate(regexes):
+            if p.search(u):
+                print(i)
+                break
+        else:
+            print('-')
