@@ -1,20 +1,19 @@
 pub struct IntSet {
-    sparse: Vec<usize>,
+    sparse: Vec<bool>,
     dense: Vec<usize>,
 }
 
 impl IntSet {
     pub fn new(capacity: usize) -> Self {
         Self {
-            sparse: vec![usize::MAX; capacity],
+            sparse: vec![false; capacity],
             dense: Vec::with_capacity(capacity),
         }
     }
 
     pub fn insert(&mut self, value: usize) -> bool {
-        let idx = self.sparse[value];
-        if self.dense.get(idx) != Some(&value) {
-            self.sparse[value] = self.dense.len();
+        if !self.sparse[value] {
+            self.sparse[value] = true;
             self.dense.push(value);
             true
         } else {
