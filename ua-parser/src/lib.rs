@@ -2,8 +2,6 @@
 #![warn(missing_docs)]
 #![allow(clippy::empty_docs)]
 #![doc = include_str!("../README.md")]
-
-use regex::Captures;
 use serde::Deserialize;
 
 pub use regex_filtered::{BuildError, ParseError};
@@ -123,6 +121,7 @@ impl<'a> Extractor<'a> {
 pub mod user_agent {
     use serde::Deserialize;
     use std::borrow::Cow;
+    use std::cell::LazyCell;
 
     use crate::resolvers::{FallbackResolver, FamilyResolver};
     use regex_filtered::BuildError;
@@ -237,16 +236,16 @@ pub mod user_agent {
         ///   but there is no group in the regex
         pub fn extract(&'a self, ua: &'a str) -> Option<ValueRef<'a>> {
             let (idx, re) = self.matcher.matching(ua).next()?;
-            let c = re.captures(ua)?;
+            let c = LazyCell::new(move || re.captures(ua));
 
             let (f, v1, v2, v3, v4) = &self.repl[idx];
 
             Some(ValueRef {
-                family: f.resolve(&c),
-                major: v1.resolve(&c),
-                minor: v2.resolve(&c),
-                patch: v3.resolve(&c),
-                patch_minor: v4.resolve(&c),
+                family: f.resolve(&c)?,
+                major: v1.resolve(&c)?,
+                minor: v2.resolve(&c)?,
+                patch: v3.resolve(&c)?,
+                patch_minor: v4.resolve(&c)?,
             })
         }
     }
@@ -303,6 +302,7 @@ pub mod user_agent {
 pub mod os {
     use serde::Deserialize;
     use std::borrow::Cow;
+    use std::cell::LazyCell;
 
     use regex_filtered::{BuildError, ParseError};
 
@@ -402,16 +402,16 @@ pub mod os {
         /// returns `None` if the UA string could not be matched.
         pub fn extract(&'a self, ua: &'a str) -> Option<ValueRef<'a>> {
             let (idx, re) = self.matcher.matching(ua).next()?;
-            let c = re.captures(ua)?;
+            let c = LazyCell::new(move || re.captures(ua));
 
             let (o, v1, v2, v3, v4) = &self.repl[idx];
 
             Some(ValueRef {
-                os: o.resolve(&c),
-                major: v1.resolve(&c),
-                minor: v2.resolve(&c),
-                patch: v3.resolve(&c),
-                patch_minor: v4.resolve(&c),
+                os: o.resolve(&c)?,
+                major: v1.resolve(&c)?,
+                minor: v2.resolve(&c)?,
+                patch: v3.resolve(&c)?,
+                patch_minor: v4.resolve(&c)?,
             })
         }
     }
@@ -466,6 +466,7 @@ pub mod os {
 pub mod device {
     use serde::Deserialize;
     use std::borrow::Cow;
+    use std::cell::LazyCell;
 
     use regex_filtered::{BuildError, ParseError};
 
@@ -567,14 +568,14 @@ pub mod device {
         /// the input.
         pub fn extract(&'a self, ua: &'a str) -> Option<ValueRef<'a>> {
             let (idx, re) = self.matcher.matching(ua).next()?;
-            let c = re.captures(ua)?;
+            let c = LazyCell::new(move || re.captures(ua));
 
             let (d, v1, v2) = &self.repl[idx];
 
             Some(ValueRef {
-                device: d.resolve(&c),
-                brand: v1.resolve(&c),
-                model: v2.resolve(&c),
+                device: d.resolve(&c)?,
+                brand: v1.resolve(&c)?,
+                model: v2.resolve(&c)?,
             })
         }
     }
