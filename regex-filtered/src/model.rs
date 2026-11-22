@@ -167,28 +167,24 @@ impl Model {
         }
     }
 
-    // re2 merges those into separate functions but it only saves on
-    // the header and increases the branching complexity of the rest
-    // so y?
-    fn and(self, mut b: Self) -> Self {
-        let mut a = self.simplify();
+    /// Simplifies `a` and `b` then returns them ordered by ascending
+    /// `op`, which makes some optimized processing easier
+    #[inline]
+    fn canonicalize(mut a: Model, mut b: Model) -> (Model, Model) {
+        a = a.simplify();
         b = b.simplify();
 
         // Canonicalize: a->op <= b->op.
-        if a.op() > b.op() {
-            std::mem::swap(&mut a, &mut b);
-        }
+        if a.op() <= b.op() { (a, b) } else { (b, a) }
+    }
 
-        // ALL and NONE are smallest opcodes.
-        a = match a {
+    fn and(self, b: Self) -> Self {
+        match Self::canonicalize(self, b) {
             // ALL and b = b
-            All(..) => return b,
+            (All(..), b) => b,
             // NONE and b = None
-            None(uid) => return None(uid),
-            a => a,
-        };
+            (a @ None(..), _) => a,
 
-        match (a, b) {
             // If a and b match op, merge their contents.
             (And(unique_id, mut va), And(_, vb)) => {
                 va.extend(vb);
@@ -203,24 +199,13 @@ impl Model {
         }
     }
 
-    fn or(self, mut b: Self) -> Self {
-        let mut a = self.simplify();
-        b = b.simplify();
-
-        // Canonicalize: a->op <= b->op.
-        if a.op() > b.op() {
-            std::mem::swap(&mut a, &mut b);
-        }
-
-        a = match a {
-            // NONE or b = b
-            None(..) => return b,
+    fn or(self, b: Self) -> Self {
+        match Self::canonicalize(self, b) {
             // ALL or b = ALL
-            All(uid) => return All(uid),
-            a => a,
-        };
+            (a @ All(..), _) => a,
+            // NONE or b = b
+            (None(..), b) => b,
 
-        match (a, b) {
             // If a and b match op, merge their contents.
             (Or(unique_id, mut va), Or(_, vb)) => {
                 va.extend(vb);
