@@ -4,7 +4,7 @@ version = "0.2.2"
 edition = "2024"
 license = "Apache-2.0"
 description = "Rust implementation of the User Agent String Parser project"
-keywords = ["ua_parser", "user-agent", "user-agent-parser"]
+keywords = ["uap", "uaparser", "user-agent", "user-agent-parser"]
 
 documentation = "https://docs.rs/ua-parser/"
 homepage = "https://github.com/ua-parser/uap-rust/"
