@@ -1,6 +1,9 @@
 use clap::Parser;
+use regex::Regex;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
+
+type Error = Box<dyn std::error::Error>;
 
 #[derive(Parser)]
 struct Args {
@@ -14,7 +17,7 @@ struct Args {
     quiet: bool,
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Error> {
     let Args {
         regexes,
         user_agents,
@@ -25,11 +28,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let start = std::time::Instant::now();
     let regexes = BufReader::new(std::fs::File::open(regexes)?)
         .lines()
-        .collect::<Result<Vec<String>, _>>()?;
+        .map(|r| Ok(Regex::new(&r?)?))
+        .collect::<Result<Vec<Regex>, Error>>()?;
 
-    let f = regex_filtered::Builder::new_atom_len(2)
-        .push_all(&regexes)?
-        .build()?;
     eprintln!(
         "{} regexes in {}s",
         regexes.len(),
@@ -46,11 +47,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         start.elapsed().as_secs_f32()
     );
 
+    let start = std::time::Instant::now();
     for _ in 0..repetitions {
         for ua in user_agents.iter() {
-            let n = f.matching(ua).next();
+            let n = regexes.iter().position(|r| r.is_match(ua));
             if !quiet {
-                if let Some((n, _)) = n {
+                if let Some(n) = n {
                     println!("{n:3}");
                 } else {
                     println!();
@@ -58,6 +60,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
+    eprintln!("executed in {}s", start.elapsed().as_secs_f32());
 
     Ok(())
 }

@@ -1,6 +1,6 @@
 # regex-filtered: FilteredRE2 for rust-regex
 
-This crate implements the logic behind [`FilteredRE2`] on top of
+This crate implements the logic behind [`RE2::FilteredRE2`] on top of
 [`regex`].
 
 The purpose is to allow efficient selection of one or more regexes
@@ -71,10 +71,34 @@ haystack to only return actual matching regexes.
 
 ## Divergences
 
-While [`FilteredRE2`] requires the user to perform prefiltering,
+While [`RE2::FilteredRE2`] requires the user to perform prefiltering,
 `regex-filtered` handles this internally: [`aho-corasick`] is pretty
 much ideal for that task and already a dependency of [`regex`] which
 `regex-filtered` based on.
+
+## Performances
+
+Process: load `samples/devices.regexes`, then iterate 100 times on
+`samples/useragents.txt` trying to find the matching regex.
+
+||total time (s)|1000 ua/s|ipc|peak memory (MiB)|
+|-|-:|-:|-:|-:|
+|FilteredRE2|25.1|299|3.60|40.5|
+|regex-filtered|20.0|376|3.28|114.0|
+|regex|259.0|29|2.43|151.0|
+
+### Notes
+
+- Bench performed on a 2021 Macbook Pro with an M1 Pro
+- `FilteredRE2` uses re2's built-in [`RE2::Set`] as it's built-in, using an
+  aho-corasick automaton in front of [`RE2::FilteredRE2`] would almost
+  certainly improve performances by some amount.
+- `regex` is the naive and straightforward implementation: load the regexes in a
+  `Vec<Regex>`, then for each user agent call [`Iterator::position`] to find the
+  first matching regex, if a any.
+- ipc and peak memory is what `time -l` returns, so the loading of regexes and
+  creation of whatever automatons are necessary are included, not just the stable
+  UA matching
 
 ## TODO
 
@@ -92,6 +116,10 @@ much ideal for that task and already a dependency of [`regex`] which
   - also maybe mapper stats on the pruning stuff and whatever
   
 [`aho-corasick`]: https://docs.rs/aho-corasick/
-[`FilteredRE2`]: https://github.com/google/re2/blob/main/re2/filtered_re2.h
+[`Iterator::position`]:
+    https://doc.rust-lang.org/core/iter/trait.Iterator.html#method.position
+[`RE2::FilteredRE2`]: https://github.com/google/re2/blob/main/re2/filtered_re2.h
+[`RE2::Set`]: https://github.com/google/re2/blob/main/re2/set.h
 [`regex`]: https://docs.rs/regex/
+[`regex::Regex`]: https://docs.rs/regex/latest/regex/struct.Regex.html
 [`regex-syntax`]: https://docs.rs/regex-syntax/
