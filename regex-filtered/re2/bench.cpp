@@ -83,6 +83,8 @@ int main(const int argc, const char* argv[]) {
 
   int repetitions = std::stoi(argv[3]);
   std::vector<int> matching;
+  matching.reserve(s.Size());
+  start = steady_clock::now();
   for(int x = 0; x < repetitions; ++x) {
     for(size_t i = 0; i < user_agents.size(); ++i) {
       auto& ua = user_agents[i];
@@ -101,6 +103,8 @@ int main(const int argc, const char* argv[]) {
       }
     }
   }
+  diff = steady_clock::now() - start;
+  std::cerr << "executed in " << diff.count() << "s" << std::endl;
 
   return 0;
 }
