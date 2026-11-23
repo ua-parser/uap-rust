@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2](https://github.com/ua-parser/uap-rust/compare/regex-filtered-v0.2.1...regex-filtered-v0.2.2) - 2026-11-23
+
+### Other
+
+- *(benchmark)* remove ipc and (especially) RSS from table
+- *(benchmarks)* improve bench scripts, add stats to readme
+- cleanup `Model::and` and `Model::or` a bit
+- use a bool vector for intset presence
+
 ## [0.2.1](https://github.com/ua-parser/uap-rust/compare/regex-filtered-v0.2.0...regex-filtered-v0.2.1) - 2026-03-19
 
 ### Fixed
