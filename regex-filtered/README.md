@@ -81,11 +81,11 @@ much ideal for that task and already a dependency of [`regex`] which
 Process: load `samples/devices.regexes`, then iterate 100 times on
 `samples/useragents.txt` trying to find the matching regex.
 
-||total time (s)|1000 ua/s|ipc|peak memory (MiB)|
-|-|-:|-:|-:|-:|
-|FilteredRE2|25.1|299|3.60|40.5|
-|regex-filtered|20.0|376|3.28|114.0|
-|regex|259.0|29|2.43|151.0|
+||total time (s)|1000 ua/s|
+|-|-:|-:|
+|FilteredRE2|25.1|299|
+|regex-filtered|20.0|376|
+|regex|259.0|29|
 
 ### Notes
 
