@@ -7,9 +7,17 @@
 use crate::Error;
 use regex::Captures;
 use std::borrow::Cow;
+use std::cell::LazyCell;
 
-fn get<'s>(c: &Captures<'s>, group: usize) -> Option<&'s str> {
-    c.get(group).map(|g| g.as_str()).filter(|s| !s.is_empty())
+type C<'s, F> = LazyCell<Option<Captures<'s>>, F>;
+
+fn get<'s, F>(c: &C<'s, F>, group: usize) -> Option<Option<&'s str>>
+where
+    F: FnOnce() -> Option<Captures<'s>>,
+{
+    LazyCell::force(c)
+        .as_ref()
+        .map(|c| c.get(group).map(|g| g.as_str()).filter(|s| !s.is_empty()))
 }
 
 // TODO:
@@ -50,13 +58,16 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    pub(crate) fn resolve(&'a self, c: &Captures<'a>) -> Cow<'a, str> {
-        match self {
+    pub(crate) fn resolve<F>(&'a self, c: &C<'a, F>) -> Option<Cow<'a, str>>
+    where
+        F: FnOnce() -> Option<Captures<'a>>,
+    {
+        Some(match self {
             Self::Replacement(s) => (**s).into(),
-            Self::Capture(i) => get(c, *i).unwrap_or("").into(),
+            Self::Capture(i) => get(c, *i)?.unwrap_or("").into(),
             Self::Template(t) => {
                 let mut r = String::new();
-                c.expand(t, &mut r);
+                LazyCell::force(c).as_ref()?.expand(t, &mut r);
                 let trimmed = r.trim();
                 if r.len() == trimmed.len() {
                     r.into()
@@ -64,7 +75,7 @@ impl<'a> Resolver<'a> {
                     trimmed.to_string().into()
                 }
             }
-        }
+        })
     }
 }
 
@@ -90,14 +101,17 @@ impl<'a> OptResolver<'a> {
         }
     }
 
-    pub(crate) fn resolve(&'a self, c: &Captures<'a>) -> Option<Cow<'a, str>> {
-        match self {
+    pub(crate) fn resolve<F>(&'a self, c: &C<'a, F>) -> Option<Option<Cow<'a, str>>>
+    where
+        F: FnOnce() -> Option<Captures<'a>>,
+    {
+        Some(match self {
             Self::None => None,
             Self::Replacement(s) => Some((**s).into()),
-            Self::Capture(i) => get(c, *i).map(From::from),
+            Self::Capture(i) => get(c, *i)?.map(From::from),
             Self::Template(t) => {
                 let mut r = String::new();
-                c.expand(t, &mut r);
+                LazyCell::force(c).as_ref()?.expand(t, &mut r);
                 let trimmed = r.trim();
                 if trimmed.is_empty() {
                     None
@@ -107,7 +121,7 @@ impl<'a> OptResolver<'a> {
                     Some(trimmed.to_string().into())
                 }
             }
-        }
+        })
     }
 }
 
@@ -135,12 +149,15 @@ impl<'a> FamilyResolver<'a> {
         }
     }
 
-    pub(crate) fn resolve(&'a self, c: &super::Captures<'a>) -> Cow<'a, str> {
-        match self {
-            FamilyResolver::Capture => get(c, 1).unwrap_or("").into(),
+    pub(crate) fn resolve<F>(&'a self, c: &C<'a, F>) -> Option<Cow<'a, str>>
+    where
+        F: FnOnce() -> Option<Captures<'a>>,
+    {
+        Some(match self {
+            FamilyResolver::Capture => get(c, 1)?.unwrap_or("").into(),
             FamilyResolver::Replacement(s) => (**s).into(),
-            FamilyResolver::Template(t) => t.replace("$1", get(c, 1).unwrap_or("")).into(),
-        }
+            FamilyResolver::Template(t) => t.replace("$1", get(c, 1)?.unwrap_or("")).into(),
+        })
     }
 }
 
@@ -161,11 +178,14 @@ impl<'a> FallbackResolver<'a> {
             Self::None
         }
     }
-    pub(crate) fn resolve(&'a self, c: &super::Captures<'a>) -> Option<&'a str> {
-        match self {
+    pub(crate) fn resolve<F>(&'a self, c: &C<'a, F>) -> Option<Option<&'a str>>
+    where
+        F: FnOnce() -> Option<Captures<'a>>,
+    {
+        Some(match self {
             FallbackResolver::None => None,
-            FallbackResolver::Capture(n) => get(c, *n),
+            FallbackResolver::Capture(n) => get(c, *n)?,
             FallbackResolver::Replacement(r) => Some(r),
-        }
+        })
     }
 }
