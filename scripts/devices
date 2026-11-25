@@ -31,18 +31,41 @@ r"""Compiles regexes.yaml to just the device regexps, with rewriting:
   Note that this is only done for a lower bound of `0` or `1`, but
   that's the case of all large bounded repetitions in regexes.yaml.
 """
+import argparse
 import string
 import sys
+import urllib.request
 
 from yaml import SafeLoader, load
 
 def main() -> None:
-    with open(sys.argv[1]) as f:
-        regexes = load(f, Loader=SafeLoader)
-    for dev in regexes['device_parsers']:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        'regexes_yaml',
+        help="path or url to a regexes.yaml file, `-` for stdin",
+    )
+    parser.add_argument(
+        '--section',
+        default='device',
+        choices=['user_agent', 'os', 'device'],
+        help="regex section to convert, defaults to `device`"
+    )
+    args = parser.parse_args()
+
+    regexes = args.regexes_yaml
+    if regexes == '-':
+        regexes = load(sys.stdin, Loader=SafeLoader)
+    elif regexes.startswith('http'):
+        with urllib.request.urlopen(regexes) as f:
+            regexes = load(f, Loader=SafeLoader)
+    else:
+        with open(regexes) as f:
+            regexes = load(f, Loader=SafeLoader)
+
+    for item in regexes[f'{args.section}_parsers']:
         print(
-            f'(?{f})' if (f := dev.get('regex_flag')) else '',
-            rewrite(dev['regex']),
+            f'(?{f})' if (f := item.get('regex_flag')) else '',
+            rewrite(item['regex']),
             sep='',
         )
 
