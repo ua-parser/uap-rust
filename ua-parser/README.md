@@ -1,3 +1,6 @@
+![regex-filtered on crates-io](https://img.shields.io/crates/v/regex-filtered?label=regex-filtered) ![regex-filtered docs](https://img.shields.io/docsrs/regex-filtered?label=regex-filtered%20docs)  
+![ua-parser in crates.io](https://img.shields.io/crates/v/ua-parser?label=ua-parser) ![ua-parser docs](https://img.shields.io/docsrs/ua-parser?label=ua-parser%20docs)
+
 # User Agent Parser
 
 This module implements the [browserscope / uap
